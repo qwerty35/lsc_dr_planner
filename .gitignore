@@ -1,0 +1,4 @@
+.idea/
+cmake-build-debug/
+/log/
+/missions/previous_missions/

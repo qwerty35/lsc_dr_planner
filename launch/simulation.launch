@@ -1,0 +1,156 @@
+<!-- LSC planner -->
+
+<launch>
+<!-- Parameters -->
+  <!-- Mission -->
+  <arg name="mission" default="forest10/forest10_10.json"/> <!-- Mission file, see missions/readme.txt for more details -->
+  <arg name="patrol" default="false"/> <!-- Change the mission to patrol between start and goal points -->
+  <arg name="max_noise" default="0.0"/> <!-- Add noise to start and goal point -->
+  <arg name="experiment" default="false" /> <!-- For experiment -->
+  <arg name="rosbag" default="false" /> <!-- Save the planning result as a rosbag file, rosbag will be stored in dynamic_planner/log -->
+
+  <!-- Map -->
+  <arg name="use_octomap" default="true"/> <!-- Use octomap to set obstacle environment. -->
+  <arg name="world_file_name" default="forest/forest10.csv"/> <!-- CSV (.csv) or Octomap (.bt) file name. File must be in dynamic_planner/world-->
+  <arg name="world_use_global_map" default="true"/>
+  <arg name="world_frame_id" default="world"/> <!-- World frame id used in Rviz -->
+  <arg name="world_resolution" default="0.1"/> <!-- Octomap resolution -->
+
+  <!-- Visualization -->
+  <arg name="rviz" default="false" /> <!-- Display the planning result in the rviz -->
+  <arg name="log_solver" default="false" /> <!-- Display the CPLEX optimization process in the terminal (Recommended to be false) -->
+  <arg name="log_vis" default="true" /> <!-- Display planning result -->
+
+  <!-- Save result -->
+  <arg name="save_result_csv" default="true" /> <!-- Save the planning result in log directory-->
+
+  <!-- Replay -->
+  <!-- If you set save_result_csv to true, then result file will be automatically generated in dynamic_planner/log -->
+  <!-- You can use this file to replay the planning result in the rviz -->
+  <arg name="replay" default="true" /> <!-- Display the planning result in the rviz. Replay file must be stored in dynamic_planner/log-->
+  <arg name="replay_file_name" default="forest_comm3_10.csv" /> <!-- Replay file name -->
+
+<!-- Nodes -->
+  <node pkg="rviz" type="rviz" name="rviz"
+        args="-d $(find dynamic_planner)/launch/rviz_config/multi_config.rviz" if="$(arg rviz)" />
+
+  <node pkg="dynamic_planner" type="multi_sync_simulator_node" name="multi_sync_simulator_node" output="screen">
+    <param name="/use_sim_time" value="true"/>
+    <param name="mission" value="$(arg mission)" />
+    <param name="log_solver" value="$(arg log_solver)" />
+    <param name="log_vis" value="$(arg log_vis)" />
+
+    <!-- Planner mode -->
+    <param name="mode/planner" value="lsc" /> <!-- lsc: LSC planner, bvc: Buffered Voronoi Cell planner -->
+    <param name="mode/goal" value="grid_based_planner" />
+    <!-- mode/goal - deadlock resolution method
+         right_hand: right hand rule,
+         prior_based: priority-based goal planning used in RAL2022
+         dynamic_priority: priority based goal planning for dynamic obstacles
+         grid_based_planner: goal planning with grid_based_planner-->
+    <param name="mode/mapf" value="pibt" />
+    <!-- mode/mapf - decentralized multi-agent path finding algorithm
+         valid parameter only if mode/goal is grid_based_planner
+         pibt: PIBT, ecbs: ECBS -->
+
+    <!-- Communication -->
+    <param name="communication/range" value="3" /> <!-- Chebyshev distance -->
+
+    <!-- World -->
+    <param name="world/frame_id" value="$(arg world_frame_id)" /> <!-- world frame id used in Rviz -->
+    <param name="world/file_name" value="$(arg world_file_name)" /> <!-- world frame id used in Rviz -->
+    <param name="world/dimension" value="2" /> <!-- 2: 2D simulation, 3: 3D simulation -->
+    <param name="world/use_octomap" value="$(arg use_octomap)" />
+    <param name="world/use_global_map" value="$(arg world_use_global_map)" />
+    <param name="world/resolution" value="$(arg world_resolution)" /> <!-- Octomap resolution -->
+    <param name="world/z_2d" value="0.6" /> <!-- Z position of the agents when world/dimension is 2 -->
+
+    <!-- Multisim setting -->
+    <param name="multisim/experiment" value="$(arg experiment)"/>
+    <param name="multisim/planning_rate" value="-1"/> <!-- Delay between iteration, if -1, then there is no delay -->
+    <param name="multisim/time_step" value="0.2" /> <!-- Replanning period, if you use LSC planner then it must be equal to traj/dt -->
+    <param name="multisim/patrol" value="$(arg patrol)"/>
+    <param name="multisim/max_noise" value="$(arg max_noise)" /> <!-- Add noise to start and goal point -->
+    <param name="multisim/max_planner_iteration" value="600" /> <!-- Maximum iteration of the planner -->
+    <param name="multisim/save_result" value="$(arg save_result_csv)" />
+    <param name="multisim/save_mission" value="true" /> <!-- Save current mission that reflects noise -->
+    <param name="multisim/replay" value="$(arg replay)" />
+    <param name="multisim/replay_file_name" value="$(arg replay_file_name)" />
+    <param name="multisim/replay_time_limit" value="-1" /> <!-- For debugging -->
+    <param name="multisim/record_time_step" value="0.1" /> <!-- Record time step -->
+
+    <!-- Trajectory representation -->
+    <param name="traj/dt" value="0.2" /> <!-- Duration of each segment -->
+    <param name="traj/M" value="10" /> <!-- The number of the segment -->
+    <param name="traj/n" value="5" /> <!-- Degree of polynomial, only 5 is available now -->
+    <param name="traj/phi" value="3" /> <!-- 3: Minimize Jerk, only 3 is available now -->
+    <param name="traj/phi_n" value="1" /> <!-- 1: Minimize Jerk, only 1 is available now -->
+
+    <!-- Trajectory optimization -->
+    <param name="opt/control_input_weight" value="0.01" /> <!-- Weight coefficient of derivatives of trajectory -->
+    <param name="opt/terminal_weight" value="1" /> <!-- Weight coefficient of error to goal -->
+
+    <!-- Grid-based planner   -->
+    <param name="grid/resolution" value="0.5" /> <!-- Resolution of the grid. It can not find path to the goal if res is too big. Computation time will be increased if it is too small.-->
+    <param name="grid/margin" value="0.0" /> <!-- Grid_point is treated as unoccupied point if dist_to_obs > agent_radius + grid_margin -->
+
+    <!-- Goal -->
+    <param name="plan/goal_threshold" value="0.1" /> <!-- Mission complete when the distance between the agent and goal point is smaller than this. -->
+    <param name="plan/priority_agent_distance" value="0.4" /> <!-- Try to broaden distance between agents over this parameter-->
+    <param name="plan/priority_obs_distance" value="1.0" /> <!-- Try to broaden distance between agent and obstacle over this parameter -->
+    <param name="plan/priority_goal_threshold" value="0.6" /> <!-- Parameter of priority function -->
+    <param name="plan/reset_threshold" value="0.5" /> <!-- If the position error is larger than this, then use reciprocal rsfc -->
+
+    <!-- Deadlock resolution for the previous work -->
+    <param name="deadlock/velocity_threshold" value="0.1" /> <!-- The agent judge that deadlock occurred if the velocity is lower than this threshold -->
+    <param name="deadlock/seq_threshold" value="5" /> <!-- Deadlock is detected after this planner_seq -->
+
+    <!-- Parameters for experiment -->
+    <param name="landing_time" value="3.0" />
+  </node>
+
+  <node pkg="rosbag" type="record" name="rosbag_recorder" output="screen" if="$(arg rosbag)"
+        args="-o $(find dynamic_planner)/log/rosbag
+              /tf
+              /world_boundary
+              /collision_model
+              /obstacle_collision_model
+              /agent_trajectories_history
+              /obstacle_trajectories_history
+              /desired_trajs_vis
+              /start_goal_points
+              /collision_alert
+              /cmd_full_state_vis
+              /obs_pred_traj_vis
+              /agent_velocities_x
+              /agent_velocities_y
+              /agent_velocities_z
+              /agent_accelerations_x
+              /agent_accelerations_y
+              /agent_accelerations_z
+              /agent_vel_limits
+              /agent_acc_limits
+              /mav0/feasible_region
+              /mav1/feasible_region
+              /mav2/feasible_region
+              /mav3/feasible_region
+              /mav4/feasible_region
+              /mav5/feasible_region
+              /mav6/feasible_region
+              /mav7/feasible_region
+              /mav8/feasible_region
+              /mav9/feasible_region
+              /grid_path_vis"/>
+
+<!--  <node pkg="octomap_server" type="octomap_server_node" name="octomap_server"-->
+<!--        args="$(find dynamic_planner)/world/$(arg world_file_name)" if="$(arg replay)">-->
+<!--    <param name="resolution"                 value="$(arg world_resolution)" />-->
+<!--    <param name="frame_id"                   value="$(arg world_frame_id)" type="string"/>-->
+<!--    <param name="sensor_model/max_range"     value="5.0" />-->
+<!--    <param name="height_map"                 value="false"/>-->
+<!--    <param name="color/r"                    value="0.2" />-->
+<!--    <param name="color/g"                    value="0.2" />-->
+<!--    <param name="color/b"                    value="0.2" />-->
+<!--    <param name="color/a"                    value="0.2" />-->
+<!--  </node>-->
+</launch>
