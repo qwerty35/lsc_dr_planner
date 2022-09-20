@@ -4,7 +4,7 @@ This package presents a decentralized deadlock-free multi-agent trajectory plann
 The details about this algorithm can be found at the following links.
 
 - **Authors:** Jungwon Park, Inkyu Jang, and H. Jin Kim from [LARR](http://larr.snu.ac.kr/), Seoul National University
-- **Paper:** [Original version](https://arxiv.org/abs/2109.09041), [Extended version](https://arxiv.org/abs/2109.09041)
+- **Paper:** To be added # [Original version](https://arxiv.org/abs/2109.09041), [Extended version](https://arxiv.org/abs/2109.09041)
 - **Video:** [Youtube](https://youtu.be/PqfdbVfSujA)
 
 //TODO: add gif thumbnail
