@@ -1,7 +1,6 @@
 #ifndef LSC_PLANNER_GRIDBASEDPLANNER_HPP
 #define LSC_PLANNER_GRIDBASEDPLANNER_HPP
 
-#include <Astar-3D/astarplanner.h>
 #include <mapf/pibt.hpp>
 #include <mapf/ecbs.hpp>
 #include <dynamicEDT3D/dynamicEDTOctomap.h>
@@ -163,8 +162,6 @@ namespace DynamicPlanning {
         bool planImpl(bool is_mapf);
 
         std::vector<gridpath_t> runMAPF(const GridMap &grid_map, const GridMission &grid_mission);
-
-        static gridpath_t runAstar(const GridMap &grid_map, const GridMission &grid_mission);
 
         [[nodiscard]] points_t gridPathToPath(const gridpath_t &grid_path) const;
 

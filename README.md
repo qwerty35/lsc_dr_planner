@@ -5,8 +5,9 @@ Our algorithm combines the advantages of both grid-based and optimization-based 
 The details can be found at the following link.
 
 - **Authors:** Jungwon Park, Inkyu Jang, and H. Jin Kim from [LARR](http://larr.snu.ac.kr/), Seoul National University
-- **Paper:**  [PDF](https://arxiv.org/abs/2109.09041)
-- **Video:** [Youtube](https://youtu.be/cQ3yr-DMdhM)
+- **Paper:** [PDF](https://arxiv.org/abs/2109.09041)  
+- **Extended version:** [PDF](https://arxiv.org/abs/2109.09041) 
+- **Video:** [Youtube](https://youtu.be/PqfdbVfSujA)
 
 //TODO: add gif thumbnail
 

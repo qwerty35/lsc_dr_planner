@@ -309,10 +309,6 @@ namespace DynamicPlanning {
             grid_paths = runMAPF(grid_map, grid_mission);
             success = !grid_paths.empty();
             plan_result.n_agents = grid_mission.n_agents;
-        } else {
-            grid_paths.emplace_back(runAstar(grid_map, grid_mission));
-            success = !grid_paths[0].empty();
-            plan_result.n_agents = 1;
         }
 
         if (success) {
@@ -377,25 +373,6 @@ namespace DynamicPlanning {
         }
 
         return grid_paths;
-    }
-
-    gridpath_t GridBasedPlanner::runAstar(const GridMap &grid_map, const GridMission &grid_mission) {
-        AstarPlanner planner;
-        EnvironmentOptions default_options;
-        SearchResult sr = planner.plan(grid_map.grid,
-                                       grid_mission.current_points[0].toArray(),
-                                       grid_mission.goal_points[0].toArray(),
-                                       default_options);
-
-        gridpath_t grid_path;
-        if (sr.pathfound) {
-            for (auto &node: sr.lppath->List) {
-                GridNode grid_node(node.i, node.j, node.z);
-                grid_path.emplace_back(grid_node);
-            }
-        }
-
-        return grid_path;
     }
 
     points_t GridBasedPlanner::gridPathToPath(const gridpath_t &grid_path) const {

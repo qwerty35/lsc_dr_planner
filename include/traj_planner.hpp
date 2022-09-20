@@ -33,14 +33,6 @@
 // Goal Optimizer
 #include <goal_optimizer.hpp>
 
-//RVO2-2D
-#include <RVO2/RVOSimulator.h>
-#include <RVO2/RVO.h>
-
-//RVO2-3D
-#include <RVO2-3D/RVOSimulator.h>
-#include <RVO2-3D/RVO.h>
-
 // Octomap
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
@@ -68,10 +60,6 @@ namespace DynamicPlanning {
         [[nodiscard]] int getPlannerSeq() const;
 
         [[nodiscard]] point3d getCurrentGoalPosition() const;
-
-        [[nodiscard]] point3d getAgentORCAVelocity() const;
-
-        [[nodiscard]] point3d getObsORCAVelocity(int oi) const;
 
         [[nodiscard]] PlanningStatistics getPlanningStatistics() const;
 
@@ -128,18 +116,11 @@ namespace DynamicPlanning {
         // Kalman filter
         std::vector<LinearKalmanFilter> linear_kalman_filters;
 
-        // ORCA
-        std::unique_ptr<RVO2D::RVOSimulator> rvo_simulator_2d;
-        std::unique_ptr<RVO3D::RVOSimulator> rvo_simulator_3d;
-        points_t orca_velocities;
-
         // ROS
         void initializeROS();
 
         // Planner module
         traj_t planImpl();
-
-        traj_t planORCA();
 
         // Functions for checking agent state
         void checkPlannerMode(); // Check modes in launch file are valid, and fix them automatically
@@ -161,8 +142,6 @@ namespace DynamicPlanning {
 
         void obstaclePredictionWithCurrVel(); // Need the position and velocity of obstacles
 
-        void obstaclePredictionWithORCA(); // Need the position and velocity of obstacles
-
         void obstaclePredictionWithPrevSol(); // Need trajectory of other agents planned in the previous step.
         // Dynamic obstacle -> current velocity, Agent -> prev sol
         void checkObstacleDisturbance(); // Check obstacle is at the start point of predicted trajectory
@@ -176,8 +155,6 @@ namespace DynamicPlanning {
 
         void initialTrajPlanningCurrVel();
 
-        void initialTrajPlanningORCA();
-
         void initialTrajPlanningPrevSol();
 
         void initialTrajPlanningCheck(); // Check agent is at the start point of initial trajectory
@@ -188,20 +165,11 @@ namespace DynamicPlanning {
 
         void goalPlanningWithStaticGoal();
 
-        void goalPlanningWithORCA();
-
         void goalPlanningWithRightHandRule();
 
         void goalPlanningWithPriority();
 
         void goalPlanningWithGridBasedPlanner();
-
-        // ORCA
-        void updateORCAVelocity(bool isObsPredWithORCA);
-
-        void updateORCAVelocity2D(bool isObsPredWithORCA);
-
-        void updateORCAVelocity3D(bool isObsPredWithORCA);
 
         // Collision constraints
         void constructLSC();

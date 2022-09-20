@@ -73,32 +73,6 @@ catkin_package(
   DEPENDS OCTOMAP
 )
 
-#RVO2-2D
-set(RVO2_2D_SRC
-  src/RVO2/Agent.cpp
-  src/RVO2/KdTree.cpp
-  src/RVO2/Obstacle.cpp
-  src/RVO2/RVOSimulator.cpp
-)
-
-#RVO2-3D
-set(RVO2_3D_SRC
-  src/RVO2-3D/Agent.cpp
-  src/RVO2-3D/KdTree.cpp
-  src/RVO2-3D/RVOSimulator.cpp
-)
-
-#Astar-3D
-set(Astar_3D_SRC
-  src/Astar-3D/astar.cpp
-  src/Astar-3D/environmentoptions.cpp
-  src/Astar-3D/isearch.cpp
-  src/Astar-3D/list.cpp
-  src/Astar-3D/map.cpp
-  src/Astar-3D/astarplanner.cpp
-  src/Astar-3D/node.cpp
-)
-
 #openGJK
 set(OPENGJK_SRC
   src/openGJK/openGJK.cpp
@@ -130,9 +104,6 @@ set(LSC_PLANNER_SRC
   src/grid_based_planner.cpp
   src/collision_constraints.cpp
   src/linear_kalman_filter.cpp
-  ${RVO2_2D_SRC}
-  ${RVO2_3D_SRC}
-  ${Astar_3D_SRC}
   ${OPENGJK_SRC}
 )
 

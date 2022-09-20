@@ -26,23 +26,6 @@ namespace DynamicPlanning {
         // Initialize trajectory optimization module
         traj_optimizer = std::make_unique<TrajOptimizer>(param, mission, B);
 
-        // Initialize RVO2
-        if (param.world_dimension == 2) {
-            rvo_simulator_2d = std::make_unique<RVO2D::RVOSimulator>();
-            rvo_simulator_2d->setTimeStep(0.5f);
-            rvo_simulator_2d->setAgentDefaults(15.0f, 10, param.orca_horizon, param.orca_horizon,
-                                               agent.radius,
-                                               agent.max_vel[0] * param.ocra_pref_velocity_ratio);
-        } else if (param.world_dimension == 3) {
-            rvo_simulator_3d = std::make_unique<RVO3D::RVOSimulator>();
-            rvo_simulator_3d->setTimeStep(0.5f);
-            rvo_simulator_3d->setAgentDefaults(15.0f, 10, param.orca_horizon,
-                                               agent.radius,
-                                               agent.max_vel[0] * param.ocra_pref_velocity_ratio);
-        } else {
-            throw std::invalid_argument("[TrajPlanner] Invalid simulation dimension");
-        }
-
         // Initialize ROS
         initializeROS();
     }
@@ -69,7 +52,6 @@ namespace DynamicPlanning {
 
         // Re-initialization for replanning
         prev_traj = desired_traj;
-        orca_velocities.clear();
 
         // Print terminal message
         statistics.planning_time.total_planning_time.update((ros::Time::now() - planning_start_time).toSec());
@@ -126,28 +108,6 @@ namespace DynamicPlanning {
         return agent.current_goal_point;
     }
 
-    point3d TrajPlanner::getAgentORCAVelocity() const {
-        return orca_velocities[0];
-    }
-
-    point3d TrajPlanner::getObsORCAVelocity(int oi) const {
-        if (obstacles.size() < oi + 2) {
-            throw std::invalid_argument("[TrajPlanner] orca velocity is not updated yet");
-        }
-
-        if (obstacles[oi].type == ObstacleType::AGENT) {
-            return orca_velocities[oi + 1]; // orca_velocities[0] = agent's orca velocity
-        } else if (obstacles[oi].type == ObstacleType::DYNAMICOBSTACLE) {
-            point3d obstacle_velocity = obstacles[oi].velocity;
-            if (param.world_dimension == 2) {
-                obstacle_velocity.z() = 0;
-            }
-            return obstacle_velocity;
-        } else {
-            throw std::invalid_argument("[TrajPlanner] invalid input of getObsORCAVelocity");
-        }
-    }
-
     PlanningStatistics TrajPlanner::getPlanningStatistics() const {
         return statistics;
     }
@@ -199,16 +159,6 @@ namespace DynamicPlanning {
 
         // Trajectory optimization
         traj_t desired_traj = trajOptimization();
-        return desired_traj;
-    }
-
-    traj_t TrajPlanner::planORCA() {
-        updateORCAVelocity(false);
-
-        traj_t desired_traj(param.M, param.n, param.dt);
-        point3d velocity = getAgentORCAVelocity();
-        desired_traj.planConstVelTraj(agent.current_state.position, velocity);
-
         return desired_traj;
     }
 
@@ -312,9 +262,6 @@ namespace DynamicPlanning {
             case PredictionMode::VELOCITY:
                 obstaclePredictionWithCurrVel();
                 break;
-            case PredictionMode::ORCA:
-                obstaclePredictionWithORCA();
-                break;
             case PredictionMode::PREVIOUSSOLUTION:
                 obstaclePredictionWithPrevSol();
                 break;
@@ -344,17 +291,6 @@ namespace DynamicPlanning {
         for (size_t oi = 0; oi < N_obs; oi++) {
             obs_pred_trajs[oi] = Trajectory<point3d>(param.M, param.n, param.dt);
             obs_pred_trajs[oi].planConstVelTraj(obstacles[oi].position, obstacles[oi].velocity);
-        }
-    }
-
-    void TrajPlanner::obstaclePredictionWithORCA() {
-        point3d new_velocity;
-        updateORCAVelocity(true);
-
-        for (size_t oi = 0; oi < obstacles.size(); oi++) {
-            point3d orca_velocity = getObsORCAVelocity(oi);
-            obs_pred_trajs[oi] = Trajectory<point3d>(param.M, param.n, param.dt);
-            obs_pred_trajs[oi].planConstVelTraj(obstacles[oi].position, orca_velocity);
         }
     }
 
@@ -458,9 +394,6 @@ namespace DynamicPlanning {
             case InitialTrajMode::VELOCITY:
                 initialTrajPlanningCurrVel();
                 break;
-            case InitialTrajMode::ORCA:
-                initialTrajPlanningORCA();
-                break;
             case InitialTrajMode::PREVIOUSSOLUTION:
                 initialTrajPlanningPrevSol();
                 break;
@@ -486,12 +419,6 @@ namespace DynamicPlanning {
 
     void TrajPlanner::initialTrajPlanningCurrVel() {
         initial_traj.planConstVelTraj(agent.current_state.position, agent.current_state.velocity);
-    }
-
-    void TrajPlanner::initialTrajPlanningORCA() {
-        updateORCAVelocity(false);
-        point3d new_velocity = getAgentORCAVelocity();
-        initial_traj.planConstVelTraj(agent.current_state.position, new_velocity);
     }
 
     void TrajPlanner::initialTrajPlanningPrevSol() {
@@ -545,9 +472,6 @@ namespace DynamicPlanning {
             case GoalMode::STATIC:
                 goalPlanningWithStaticGoal();
                 break;
-            case GoalMode::ORCA:
-                goalPlanningWithORCA();
-                break;
             case GoalMode::RIGHTHAND:
                 goalPlanningWithRightHandRule();
                 break;
@@ -569,19 +493,6 @@ namespace DynamicPlanning {
 
     void TrajPlanner::goalPlanningWithStaticGoal() {
         agent.current_goal_point = agent.desired_goal_point;
-    }
-
-    void TrajPlanner::goalPlanningWithORCA() {
-        updateORCAVelocity(false);
-        point3d orca_velocity = getAgentORCAVelocity();
-        agent.current_goal_point = agent.current_state.position + orca_velocity * param.M * param.dt;
-        ClosestPoints closest_points;
-        closest_points = closestPointsBetweenPointAndLineSegment(agent.desired_goal_point,
-                                                                 Line(agent.current_state.position,
-                                                                      agent.current_goal_point));
-        if (closest_points.dist < 0.05) {
-            agent.current_goal_point = agent.desired_goal_point;
-        }
     }
 
     void TrajPlanner::goalPlanningWithRightHandRule() {
@@ -665,167 +576,6 @@ namespace DynamicPlanning {
         GoalOptimizer goal_optimizer(param, mission);
         agent.current_goal_point = goal_optimizer.solve(agent, constraints,
                                                         agent.current_goal_point, agent.next_waypoint);
-    }
-
-    void TrajPlanner::updateORCAVelocity(bool use_orca_prediction) {
-        //check orca velocity is updated
-        if (use_orca_prediction and !orca_velocities.empty()) {
-            ROS_WARN("[TrajPlanner] orca velocity is already updated!, delete previous one");
-            orca_velocities.clear();
-        } else if (not orca_velocities.empty()) {
-            return;
-        }
-
-        if (param.world_dimension == 2) {
-            updateORCAVelocity2D(use_orca_prediction);
-        } else {
-            updateORCAVelocity3D(use_orca_prediction);
-        }
-    }
-
-    void TrajPlanner::updateORCAVelocity2D(bool use_orca_prediction) {
-        // set agent
-        std::vector <size_t> agentsList;
-        agentsList.emplace_back(0);
-        rvo_simulator_2d->addAgent(RVO2D::Vector2(agent.current_state.position.x(),
-                                                  agent.current_state.position.y()));
-        rvo_simulator_2d->setAgentRadius(0, agent.radius * param.orca_inflation_ratio);
-        rvo_simulator_2d->setAgentIsDynamicObstacle(0, false);
-        rvo_simulator_2d->setAgentVelocity(0, RVO2D::Vector2(agent.current_state.velocity.x(),
-                                                             agent.current_state.velocity.y()));
-
-        RVO2D::Vector2 goalVector = RVO2D::Vector2(agent.current_goal_point.x(),
-                                                   agent.current_goal_point.y())
-                                    - rvo_simulator_2d->getAgentPosition(0);
-        double agent_pref_vel = agent.max_vel[0] * param.ocra_pref_velocity_ratio;
-        if (RVO2D::absSq(goalVector) > agent_pref_vel) {
-            goalVector = RVO2D::normalize(goalVector) * agent_pref_vel;
-        }
-        rvo_simulator_2d->setAgentPrefVelocity(0, goalVector);
-
-        // set dynamic obstacles
-        size_t N_obs = obstacles.size();
-        for (size_t oi = 0; oi < N_obs; oi++) {
-            rvo_simulator_2d->addAgent(RVO2D::Vector2(obstacles[oi].position.x(), obstacles[oi].position.y()));
-            rvo_simulator_2d->setAgentRadius(oi + 1, obstacles[oi].radius * param.orca_inflation_ratio);
-            rvo_simulator_2d->setAgentIsDynamicObstacle(oi + 1, obstacles[oi].type != ObstacleType::AGENT);
-            if (use_orca_prediction and obstacles[oi].type == ObstacleType::AGENT) {
-                agentsList.emplace_back(oi + 1);
-            }
-
-            RVO2D::Vector2 obstacle_velocity = RVO2D::Vector2(obstacles[oi].velocity.x(),
-                                                              obstacles[oi].velocity.y());
-            rvo_simulator_2d->setAgentVelocity(oi + 1, obstacle_velocity);
-
-            if (use_orca_prediction and obstacles[oi].type == ObstacleType::AGENT) {
-                RVO2D::Vector2 obstacle_goal_point = RVO2D::Vector2(obstacles[oi].goal_point.x(),
-                                                                    obstacles[oi].goal_point.y());
-                goalVector = obstacle_goal_point - rvo_simulator_2d->getAgentPosition(oi + 1);
-                double obs_pref_vel = mission.agents[obstacles[oi].id].max_vel[0] * param.ocra_pref_velocity_ratio;
-                if (RVO2D::absSq(goalVector) > obs_pref_vel) {
-                    goalVector = RVO2D::normalize(goalVector) * obs_pref_vel;
-                }
-                rvo_simulator_2d->setAgentPrefVelocity(oi + 1, goalVector);
-            } else {
-                rvo_simulator_2d->setAgentPrefVelocity(oi + 1, obstacle_velocity);
-            }
-        }
-
-//            // add noise
-//            for(int i = 0; i < 1 + N_obs; i++){
-//                float angle = std::rand() * 2.0f * M_PI / RAND_MAX;
-//                float dist = std::rand() * 0.0001f / RAND_MAX;
-//                rvo_simulator->setAgentPrefVelocity(i, rvo_simulator->getAgentPrefVelocity(i) + dist * RVO::Vector3(std::cos(angle), std::sin(angle)));
-//            }
-
-        // compute new velocity
-        rvo_simulator_2d->computeNewVelocity(agentsList);
-        orca_velocities.resize(N_obs + 1);
-        for (size_t i: agentsList) {
-            RVO2D::Vector2 rvo_orca_velocity = rvo_simulator_2d->getAgentVelocity(i);
-            point3d orca_velocity = point3d(rvo_orca_velocity.x(), rvo_orca_velocity.y(), 0);
-            orca_velocities[i] = orca_velocity;
-        }
-
-        // delete all agents and obstacles
-        rvo_simulator_2d->deleteAllAgents();
-    }
-
-    void TrajPlanner::updateORCAVelocity3D(bool use_orca_prediction) {
-        // set agent
-        std::vector <size_t> agentsList;
-        agentsList.emplace_back(0);
-        rvo_simulator_3d->addAgent(RVO3D::Vector3(agent.current_state.position.x(),
-                                                  agent.current_state.position.y(),
-                                                  agent.current_state.position.z()));
-        rvo_simulator_3d->setAgentRadius(0, agent.radius * param.orca_inflation_ratio);
-        rvo_simulator_3d->setAgentIsDynamicObstacle(0, false);
-        rvo_simulator_3d->setAgentVelocity(0, RVO3D::Vector3(agent.current_state.velocity.x(),
-                                                             agent.current_state.velocity.y(),
-                                                             agent.current_state.velocity.z()));
-        RVO3D::Vector3 goalVector = RVO3D::Vector3(agent.current_goal_point.x(),
-                                                   agent.current_goal_point.y(),
-                                                   agent.current_goal_point.z())
-                                    - rvo_simulator_3d->getAgentPosition(0);
-        double agent_pref_vel = agent.max_vel[0] * param.ocra_pref_velocity_ratio;
-        if (RVO3D::absSq(goalVector) > agent_pref_vel) {
-            goalVector = RVO3D::normalize(goalVector) * agent_pref_vel;
-        }
-        rvo_simulator_3d->setAgentPrefVelocity(0, goalVector);
-
-
-        // set dynamic obstacles
-        size_t N_obs = obstacles.size();
-        for (size_t oi = 0; oi < N_obs; oi++) {
-            rvo_simulator_3d->addAgent(RVO3D::Vector3(obstacles[oi].position.x(),
-                                                      obstacles[oi].position.y(),
-                                                      obstacles[oi].position.z()));
-            rvo_simulator_3d->setAgentRadius(oi + 1, obstacles[oi].radius * param.orca_inflation_ratio);
-
-            rvo_simulator_3d->setAgentIsDynamicObstacle(oi + 1, obstacles[oi].type != ObstacleType::AGENT);
-            if (use_orca_prediction and obstacles[oi].type == ObstacleType::AGENT) {
-                agentsList.emplace_back(oi + 1);
-            }
-
-            RVO3D::Vector3 obstacle_velocity = RVO3D::Vector3(obstacles[oi].velocity.x(),
-                                                              obstacles[oi].velocity.y(),
-                                                              obstacles[oi].velocity.z());
-            rvo_simulator_3d->setAgentVelocity(oi + 1, obstacle_velocity);
-
-            if (use_orca_prediction) {
-                RVO3D::Vector3 obstacle_goal_point = RVO3D::Vector3(obstacles[oi].goal_point.x(),
-                                                                    obstacles[oi].goal_point.y(),
-                                                                    obstacles[oi].goal_point.z());
-                goalVector = obstacle_goal_point - rvo_simulator_3d->getAgentPosition(oi + 1);
-                double obs_pref_vel = mission.agents[obstacles[oi].id].max_vel[0] * param.ocra_pref_velocity_ratio;
-                if (RVO3D::absSq(goalVector) > obs_pref_vel) {
-                    goalVector = RVO3D::normalize(goalVector) * obs_pref_vel;
-                }
-                rvo_simulator_3d->setAgentPrefVelocity(oi + 1, goalVector);
-            } else {
-                rvo_simulator_3d->setAgentPrefVelocity(oi + 1, obstacle_velocity);
-            }
-        }
-
-//            // add noise
-//            for(int i = 0; i < 1 + N_obs; i++){
-//                float angle = std::rand() * 2.0f * M_PI / RAND_MAX;
-//                float dist = std::rand() * 0.0001f / RAND_MAX;
-//                rvo_simulator->setAgentPrefVelocity(i, rvo_simulator->getAgentPrefVelocity(i) + dist * RVO::Vector3(std::cos(angle), std::sin(angle)));
-//            }
-
-        // compute new velocity
-        rvo_simulator_3d->computeNewVelocity(agentsList);
-        orca_velocities.resize(N_obs + 1);
-        for (auto qi: agentsList) {
-            RVO3D::Vector3 orca_velocity = rvo_simulator_3d->getAgentVelocity(qi);
-            orca_velocities[qi] = point3d(orca_velocity.x(),
-                                          orca_velocity.y(),
-                                          orca_velocity.z());
-        }
-
-        // delete all agents and obstacles
-        rvo_simulator_3d->deleteAllAgents();
     }
 
     void TrajPlanner::constructLSC() {
@@ -1032,14 +782,6 @@ namespace DynamicPlanning {
     }
 
     traj_t TrajPlanner::trajOptimization() {
-        if (param.planner_mode == PlannerMode::ORCA) {
-            Timer timer;
-            traj_t desired_traj = planORCA();
-            timer.stop();
-            statistics.planning_time.traj_optimization_time.update(timer.elapsedSeconds());
-            return desired_traj;
-        }
-
         Timer timer;
         TrajOptResult result;
 
