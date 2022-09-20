@@ -1,12 +1,10 @@
 # lsc_dr_planner
 
-This package presents an efficient multi-agent trajectory planning algorithm which generates safe trajectories in obstacle-dense environments.
-Our algorithm combines the advantages of both grid-based and optimization-based approaches, and generates safe, dynamically feasible trajectory without suffering from an errorneous optimization setup such as imposing infeasible collision constraints.
-The details can be found at the following link.
+This package presents a decentralized deadlock-free multi-agent trajectory planning algorithm in obstacle-dense environments.
+The details about this algorithm can be found at the following links.
 
 - **Authors:** Jungwon Park, Inkyu Jang, and H. Jin Kim from [LARR](http://larr.snu.ac.kr/), Seoul National University
-- **Paper:** [PDF](https://arxiv.org/abs/2109.09041)  
-- **Extended version:** [PDF](https://arxiv.org/abs/2109.09041) 
+- **Paper:** [Original version](https://arxiv.org/abs/2109.09041), [Extended version](https://arxiv.org/abs/2109.09041)
 - **Video:** [Youtube](https://youtu.be/PqfdbVfSujA)
 
 //TODO: add gif thumbnail
@@ -70,7 +68,7 @@ Note: If you want to generate the mission file automatically, then use the matla
 ## 4. Acknowledgment
 This work is implemented based on the following packages.
 
-(1) PIBT (asdf)
+(1) PIBT (https://github.com/Kei18/mapf-IR)
 
 (2) rapidjson (https://rapidjson.org/)
 
