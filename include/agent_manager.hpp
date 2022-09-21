@@ -4,7 +4,6 @@
 #include <trajectory.hpp>
 #include <traj_planner.hpp>
 #include <map_manager.hpp>
-#include <cmd_publisher.hpp>
 #include <util.hpp>
 
 namespace DynamicPlanning {
@@ -20,14 +19,14 @@ namespace DynamicPlanning {
 
         void publishMap();
 
-        void obstacleCallback(const dynamic_msgs::ObstacleArray& msg_obstacles);
+        void obstacleCallback(const std::vector<Obstacle> &msg_obstacles);
 
         void mergeMapCallback(const octomap_msgs::Octomap& msg_merge_map);
 
         bool isInitialStateValid();
 
         // Setter
-        void setCurrentState(const dynamic_msgs::State& msg_current_state);
+        void setCurrentState(const State& msg_current_state);
 
         void setPlannerState(const PlannerState& new_planner_state);
 
@@ -44,9 +43,9 @@ namespace DynamicPlanning {
         // Getter
         [[nodiscard]] point3d getCurrentPosition() const;
 
-        [[nodiscard]] dynamic_msgs::State getCurrentStateMsg() const;
+        [[nodiscard]] State getCurrentState() const;
 
-        [[nodiscard]] dynamic_msgs::State getFutureStateMsg(double future_time) const;
+        [[nodiscard]] State getFutureState(double future_time) const;
 
         [[nodiscard]] PlanningStatistics getPlanningStatistics() const;
 
@@ -58,11 +57,7 @@ namespace DynamicPlanning {
 
         [[nodiscard]] point3d getDesiredGoalPoint() const;
 
-        [[nodiscard]] dynamic_msgs::Obstacle getAgentMsg() const;
-
-        [[nodiscard]] point3d getObservedAgentPosition() const;
-
-        [[nodiscard]] point3d getObservedObsPosition(int obs_id) const;
+        [[nodiscard]] Obstacle getAgent() const;
 
         [[nodiscard]] octomap_msgs::Octomap getOctomapMsg() const;
 
@@ -92,7 +87,6 @@ namespace DynamicPlanning {
         //Traj Planner
         std::unique_ptr<TrajPlanner> traj_planner;
         std::unique_ptr<MapManager> map_manager;
-        std::unique_ptr<CmdPublisher> cmd_publisher;
 
         void planningStateTransition();
     };

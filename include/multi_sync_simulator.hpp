@@ -4,9 +4,6 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <dynamic_msgs/TrajectoryArray.h>
-#include <dynamic_msgs/GoalArray.h>
-#include <dynamic_msgs/UpdateGoals.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_srvs/Empty.h>
@@ -57,7 +54,6 @@ namespace DynamicPlanning {
         ros::ServiceServer service_land;
         ros::ServiceServer service_patrol;
         ros::ServiceServer service_stop_patrol;
-        ros::ServiceServer service_change_mission;
 
         const Param param;
         Mission mission;
@@ -98,11 +94,7 @@ namespace DynamicPlanning {
 
         void saveSimulationResult();
 
-        void saveExperimentResult();
-
         void saveSimulationResultAsCSV();
-
-        void saveExperimentResultAsCSV();
 
         void saveSummarizedResultAsCSV();
 
@@ -119,8 +111,6 @@ namespace DynamicPlanning {
         bool patrolCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
         bool stopPatrolCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
-
-        bool changeMissionCallback(dynamic_msgs::UpdateGoals::Request& req, dynamic_msgs::UpdateGoals::Response& res);
 
         void publishCollisionModel();
 

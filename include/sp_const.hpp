@@ -10,8 +10,6 @@
 #include <octomap/OcTree.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/MultiArrayDimension.h>
-#include <dynamic_msgs/State.h>
-#include <dynamic_msgs/Obstacle.h>
 
 namespace DynamicPlanning {
     typedef octomap::point3d point3d;

@@ -7,17 +7,17 @@
   <arg name="patrol" default="false"/> <!-- Change the mission to patrol between start and goal points -->
   <arg name="max_noise" default="0.0"/> <!-- Add noise to start and goal point -->
   <arg name="experiment" default="false" /> <!-- For experiment -->
-  <arg name="rosbag" default="false" /> <!-- Save the planning result as a rosbag file, rosbag will be stored in dynamic_planner/log -->
+  <arg name="rosbag" default="false" /> <!-- Save the planning result as a rosbag file, rosbag will be stored in lsc_dr_planner/log -->
 
   <!-- Map -->
   <arg name="use_octomap" default="true"/> <!-- Use octomap to set obstacle environment. -->
-  <arg name="world_file_name" default="forest/forest10.csv"/> <!-- CSV (.csv) or Octomap (.bt) file name. File must be in dynamic_planner/world-->
+  <arg name="world_file_name" default="forest/forest10.csv"/> <!-- CSV (.csv) or Octomap (.bt) file name. File must be in lsc_dr_planner/world-->
   <arg name="world_use_global_map" default="true"/>
   <arg name="world_frame_id" default="world"/> <!-- World frame id used in Rviz -->
   <arg name="world_resolution" default="0.1"/> <!-- Octomap resolution -->
 
   <!-- Visualization -->
-  <arg name="rviz" default="false" /> <!-- Display the planning result in the rviz -->
+  <arg name="rviz" default="true" /> <!-- Display the planning result in the rviz -->
   <arg name="log_solver" default="false" /> <!-- Display the CPLEX optimization process in the terminal (Recommended to be false) -->
   <arg name="log_vis" default="true" /> <!-- Display planning result -->
 
@@ -25,33 +25,27 @@
   <arg name="save_result_csv" default="true" /> <!-- Save the planning result in log directory-->
 
   <!-- Replay -->
-  <!-- If you set save_result_csv to true, then result file will be automatically generated in dynamic_planner/log -->
+  <!-- If you set save_result_csv to true, then result file will be automatically generated in lsc_dr_planner/log -->
   <!-- You can use this file to replay the planning result in the rviz -->
-  <arg name="replay" default="true" /> <!-- Display the planning result in the rviz. Replay file must be stored in dynamic_planner/log-->
+  <arg name="replay" default="false" /> <!-- Display the planning result in the rviz. Replay file must be stored in lsc_dr_planner/log-->
   <arg name="replay_file_name" default="forest_comm3_10.csv" /> <!-- Replay file name -->
 
 <!-- Nodes -->
   <node pkg="rviz" type="rviz" name="rviz"
-        args="-d $(find dynamic_planner)/launch/rviz_config/multi_config.rviz" if="$(arg rviz)" />
+        args="-d $(find lsc_dr_planner)/launch/rviz_config/multi_config.rviz" if="$(arg rviz)" />
 
-  <node pkg="dynamic_planner" type="multi_sync_simulator_node" name="multi_sync_simulator_node" output="screen">
+  <node pkg="lsc_dr_planner" type="multi_sync_simulator_node" name="multi_sync_simulator_node" output="screen">
     <param name="/use_sim_time" value="true"/>
     <param name="mission" value="$(arg mission)" />
     <param name="log_solver" value="$(arg log_solver)" />
     <param name="log_vis" value="$(arg log_vis)" />
 
     <!-- Planner mode -->
-    <param name="mode/planner" value="lsc" /> <!-- lsc: LSC planner, bvc: Buffered Voronoi Cell planner -->
-    <param name="mode/goal" value="grid_based_planner" />
-    <!-- mode/goal - deadlock resolution method
-         right_hand: right hand rule,
-         prior_based: priority-based goal planning used in RAL2022
-         dynamic_priority: priority based goal planning for dynamic obstacles
-         grid_based_planner: goal planning with grid_based_planner-->
-    <param name="mode/mapf" value="pibt" />
-    <!-- mode/mapf - decentralized multi-agent path finding algorithm
-         valid parameter only if mode/goal is grid_based_planner
-         pibt: PIBT, ecbs: ECBS -->
+    <param name="mode/planner" value="lsc" /> <!-- lsc: LSC planner -->
+    <param name="mode/goal" value="grid_based_planner" /> <!-- mode/goal - deadlock resolution method
+                                                               grid_based_planner: goal planning with grid_based_planner-->
+    <param name="mode/mapf" value="pibt" /> <!-- mode/mapf - decentralized multi-agent path finding algorithm
+                                                 pibt: PIBT-->
 
     <!-- Communication -->
     <param name="communication/range" value="3" /> <!-- Chebyshev distance -->
@@ -110,7 +104,7 @@
   </node>
 
   <node pkg="rosbag" type="record" name="rosbag_recorder" output="screen" if="$(arg rosbag)"
-        args="-o $(find dynamic_planner)/log/rosbag
+        args="-o $(find lsc_dr_planner)/log/rosbag
               /tf
               /world_boundary
               /collision_model
@@ -141,16 +135,4 @@
               /mav8/feasible_region
               /mav9/feasible_region
               /grid_path_vis"/>
-
-<!--  <node pkg="octomap_server" type="octomap_server_node" name="octomap_server"-->
-<!--        args="$(find dynamic_planner)/world/$(arg world_file_name)" if="$(arg replay)">-->
-<!--    <param name="resolution"                 value="$(arg world_resolution)" />-->
-<!--    <param name="frame_id"                   value="$(arg world_frame_id)" type="string"/>-->
-<!--    <param name="sensor_model/max_range"     value="5.0" />-->
-<!--    <param name="height_map"                 value="false"/>-->
-<!--    <param name="color/r"                    value="0.2" />-->
-<!--    <param name="color/g"                    value="0.2" />-->
-<!--    <param name="color/b"                    value="0.2" />-->
-<!--    <param name="color/a"                    value="0.2" />-->
-<!--  </node>-->
 </launch>

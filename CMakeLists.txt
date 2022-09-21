@@ -61,7 +61,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   octomap_ros
   octomap_msgs
-  dynamic_msgs
   pcl_ros
 )
 include_directories(
@@ -97,7 +96,6 @@ set(LSC_PLANNER_SRC
   src/trajectory.cpp
   src/agent_manager.cpp
   src/map_manager.cpp
-  src/cmd_publisher.cpp
   src/traj_planner.cpp
   src/traj_optimizer.cpp
   src/goal_optimizer.cpp

@@ -27,7 +27,6 @@ namespace DynamicPlanning {
         nh.param<bool>("multisim/replay", multisim_replay, false);
         nh.param<std::string>("multisim/replay_file_name", multisim_replay_file_name, "default.csv");
         nh.param<double>("multisim/replay_time_limit", multisim_replay_time_limit, -1);
-        nh.param<bool>("multisim/experiment", multisim_experiment, false);
         nh.param<double>("multisim/record_time_step", multisim_save_time_step, 0.1);
 
         // Goal mode
@@ -123,7 +122,7 @@ namespace DynamicPlanning {
         // Debug
         nh.param<int>("debug/planner_seq", debug_planner_seq, 0);
 
-        package_path = ros::package::getPath("dynamic_planner");
+        package_path = ros::package::getPath("lsc_dr_planner");
 
         // Planner mode
         std::string planner_mode_str;

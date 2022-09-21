@@ -15,10 +15,6 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
-#include <dynamic_msgs/ObstacleArray.h>
-#include <dynamic_msgs/TrajectoryArray.h>
-#include <dynamic_msgs/CollisionConstraint.h>
-#include <dynamic_msgs/PlanningReport.h>
 #include <sensor_msgs/PointCloud2.h>
 
 // Safe Corridor
@@ -54,7 +50,7 @@ namespace DynamicPlanning {
         void publish();
 
         // Setter
-        void setObstacles(const dynamic_msgs::ObstacleArray &msg_obstacles);
+        void setObstacles(const std::vector<Obstacle> &obstacles);
 
         // Getter
         [[nodiscard]] int getPlannerSeq() const;

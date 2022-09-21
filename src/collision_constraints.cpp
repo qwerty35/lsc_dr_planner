@@ -479,14 +479,6 @@ namespace DynamicPlanning {
         return sfcs_candidates;
     }
 
-    void CollisionConstraints::clearSlackObstacles() {
-        dynamic_obstacle_indices.clear();
-    }
-
-    void CollisionConstraints::addSlackObstacle(int obs_idx) {
-        dynamic_obstacle_indices.emplace(obs_idx);
-    }
-
     LSC CollisionConstraints::getLSC(int oi, int m, int i) const {
         return lscs[oi][m][i];
     }

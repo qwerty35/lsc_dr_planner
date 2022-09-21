@@ -4,10 +4,11 @@ This package presents a decentralized deadlock-free multi-agent trajectory plann
 The details about this algorithm can be found at the following links.
 
 - **Authors:** Jungwon Park, Inkyu Jang, and H. Jin Kim from [LARR](http://larr.snu.ac.kr/), Seoul National University
-- **Paper:**  [Extended version](https://arxiv.org/abs/2209.09447)
+- **Paper:** [Extended version](https://arxiv.org/abs/2209.09447)
 - **Video:** [Youtube](https://youtu.be/PqfdbVfSujA)
 
-//TODO: add gif thumbnail
+![alt text](images/thumbnail.gif)
+
 
 ## 1. Install
 This work is implemented based on C++17. Tested in the ROS Melodic, Ubuntu 18.04
@@ -32,9 +33,7 @@ export ROS_DISTRO=noetic
 sudo apt-get install ros-$ROS_DISTRO-octomap
 sudo apt-get install ros-$ROS_DISTRO-octomap-*
 sudo apt-get install ros-$ROS_DISTRO-dynamic-edt-3d
-git clone https://github.com/qwerty35/dynamic_msgs.git
 ```
-//TODO: fix repo name
 
 (5) Before building packages, check CMAKELIST that CPLEX_PREFIX_DIR is indicating the intallation location. For instance, if CPLEX is installed in ```/opt/ibm/ILOG/CPLEX_Studio201```, then CPLEX_PREFIX_DIR should be:
 ```
@@ -59,7 +58,7 @@ The simulation result will be saved at ```lsc_dr_planner/log```.
 ## 3. Configuration
 You can configure the simulation setting at the launch, mission files.
 - ```launch/simulation.launch```: Mission, octomap, parameters for algorithm
-- ```missions/*.json```: Start, goal, dynamical limit of the agent, map size
+- ```missions/*.json```: Start, goal, dynamical limits of the agent, map size
 
 See the comments in the ```launch/simulation.launch``` and ```missions/readme.txt``` file for more details
 

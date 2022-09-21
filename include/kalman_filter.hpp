@@ -1,5 +1,4 @@
 #pragma once
-#include <dynamic_msgs/State.h>
 #include <Eigen/Dense>
 #include <sp_const.hpp>
 

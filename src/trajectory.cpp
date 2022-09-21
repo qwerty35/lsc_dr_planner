@@ -148,38 +148,23 @@ namespace DynamicPlanning {
     }
 
     template<typename T>
-    dynamic_msgs::State Trajectory<T>::getStateAt(double time) const {
+    State Trajectory<T>::getStateAt(double time) const {
         ROS_ERROR("Wrong usage");
     }
 
     template<>
-    dynamic_msgs::State Trajectory<point3d>::getStateAt(double time) const {
-        dynamic_msgs::State state;
-        point3d position = getPointAt(time);
-        state.pose.position = point3DToPointMsg(position);
-        state.pose.orientation = defaultQuaternion();
+    State Trajectory<point3d>::getStateAt(double time) const {
+        State state;
+        state.position = getPointAt(time);
 
         traj_t dtraj = derivative();
-        point3d velocity = dtraj.getPointAt(time);
-        state.velocity.linear = point3DToVector3Msg(velocity);
+        state.velocity = dtraj.getPointAt(time);
 
         traj_t ddtraj = dtraj.derivative();
-        point3d accel = ddtraj.getPointAt(time);
-        state.acceleration.linear = point3DToVector3Msg(accel);
+        state.acceleration = ddtraj.getPointAt(time);
 
         traj_t dddtraj = ddtraj.derivative();
         point3d jerk = dddtraj.getPointAt(time);
-
-        point3d thrust = accel + point3d(0, 0, 9.81); // add gravity
-        point3d x_world(1, 0, 0);
-        point3d z_body = thrust.normalized();
-        point3d y_body = (z_body.cross(x_world)).normalized();
-        point3d x_body = y_body.cross(z_body);
-
-        point3d jerk_orth_zbody = jerk - z_body * jerk.dot(z_body);
-        point3d h_w = jerk_orth_zbody * (1 / thrust.norm());
-        point3d omega(-h_w.dot(y_body), h_w.dot(x_body), 0); //TODO: When yaw is not 0?
-        state.velocity.angular = point3DToVector3Msg(omega);
 
         return state;
     }
@@ -231,51 +216,6 @@ namespace DynamicPlanning {
         }
 
         return traj_trans;
-    }
-
-    template<typename T>
-    void Trajectory<T>::trajMsgToTraj(const dynamic_msgs::Trajectory &msg) {
-        ROS_ERROR("Wrong usage");
-    }
-
-    template<>
-    void Trajectory<point3d>::trajMsgToTraj(const dynamic_msgs::Trajectory &msg) {
-        M = msg.param.M;
-        n = msg.param.n;
-
-        segments.resize(M);
-        for (size_t m = 0; m < M; m++) {
-            segments[m].control_points.resize(n + 1);
-            for (size_t i = 0; i < n + 1; i++) {
-                segments[m].control_points[i] = pointMsgToPoint3d(msg.segments[m].control_points[i]);
-                segments[m].segment_time = msg.segments[m].segment_time;
-            }
-        }
-    }
-
-    template<typename T>
-    dynamic_msgs::Trajectory Trajectory<T>::toTrajMsg(int id) const {
-        ROS_ERROR("Wrong usage");
-    }
-
-    template<>
-    dynamic_msgs::Trajectory Trajectory<point3d>::toTrajMsg(int id) const {
-        dynamic_msgs::Trajectory msg_traj;
-
-        msg_traj.param.id = id;
-        msg_traj.param.M = M;
-        msg_traj.param.n = n;
-
-        msg_traj.segments.resize(M);
-        for (int m = 0; m < M; m++) {
-            msg_traj.segments[m].segment_time = segments[m].segment_time;
-            msg_traj.segments[m].control_points.resize(n + 1);
-            for (int i = 0; i < n + 1; i++) {
-                msg_traj.segments[m].control_points[i] = point3DToPointMsg(segments[m].control_points[i]);
-            }
-        }
-
-        return msg_traj;
     }
 
     template<typename T>

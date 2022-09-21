@@ -1,6 +1,4 @@
 #pragma once
-#include <dynamic_msgs/Trajectory.h>
-#include <dynamic_msgs/Obstacle.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 #include <Eigen/Dense>
@@ -24,6 +22,7 @@ namespace DynamicPlanning {
         vector3d velocity;
         point3d goal_point;
         bool collision_alert;
+        point3d observed_position;
         Trajectory <point3d> prev_traj; //trajectory of obstacles planned at the previous step
     };
 
@@ -35,8 +34,8 @@ namespace DynamicPlanning {
 
         }
 
-        dynamic_msgs::Obstacle getObstacle(double t) {
-            dynamic_msgs::Obstacle obstacle = getObstacle_impl(t);
+        Obstacle getObstacle(double t) {
+            Obstacle obstacle = getObstacle_impl(t);
 //            if(type == "static"){
 //                obstacle.type = ObstacleType::STATICOBSTACLE;
 //            }
@@ -49,8 +48,8 @@ namespace DynamicPlanning {
             return obstacle;
         }
 
-        virtual dynamic_msgs::Obstacle getObstacle_impl(double t) {
-            dynamic_msgs::Obstacle obstacle;
+        virtual Obstacle getObstacle_impl(double t) {
+            Obstacle obstacle;
             return obstacle;
         }
 
@@ -89,7 +88,7 @@ namespace DynamicPlanning {
             type = "spin";
         }
 
-        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
+        Obstacle getObstacle_impl(double t) override {
             return getSpinObstacle(t);
         }
 
@@ -98,8 +97,8 @@ namespace DynamicPlanning {
         geometry_msgs::Point start;
         double speed;
 
-        dynamic_msgs::Obstacle getSpinObstacle(double t) {
-            dynamic_msgs::Obstacle spinObstacle;
+        Obstacle getSpinObstacle(double t) {
+            Obstacle spinObstacle;
             Eigen::Vector3d a(start.x - axis.pose.position.x, start.y - axis.pose.position.y,
                               start.z - axis.pose.position.z);
             Eigen::Vector3d n(axis.pose.orientation.x, axis.pose.orientation.y, axis.pose.orientation.z);
@@ -119,18 +118,18 @@ namespace DynamicPlanning {
                                  sin(theta / 2) * n.z());
             Eigen::Quaterniond p(0, a.x(), a.y(), a.z());
             p = q * p * q.inverse();
-            spinObstacle.pose.position.x = axis.pose.position.x + p.x();
-            spinObstacle.pose.position.y = axis.pose.position.y + p.y();
-            spinObstacle.pose.position.z = axis.pose.position.z + p.z();
+            spinObstacle.position.x() = axis.pose.position.x + p.x();
+            spinObstacle.position.y() = axis.pose.position.y + p.y();
+            spinObstacle.position.z() = axis.pose.position.z + p.z();
 
             // velocity
             theta = M_PI / 2;
             Eigen::Quaterniond q_vel(cos(theta / 2), sin(theta / 2) * n.x(), sin(theta / 2) * n.y(),
                                      sin(theta / 2) * n.z());
             p = q_vel * p * q_vel.inverse();
-            spinObstacle.velocity.linear.x = w * p.x();
-            spinObstacle.velocity.linear.y = w * p.y();
-            spinObstacle.velocity.linear.z = w * p.z();
+            spinObstacle.velocity.x() = w * p.x();
+            spinObstacle.velocity.y() = w * p.y();
+            spinObstacle.velocity.z() = w * p.z();
 
             return spinObstacle;
         }
@@ -161,7 +160,7 @@ namespace DynamicPlanning {
             }
         }
 
-        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
+        Obstacle getObstacle_impl(double t) override {
             return getStraightObstacle(t);
         }
 
@@ -173,8 +172,8 @@ namespace DynamicPlanning {
         point3d start, goal, n;
         double speed, dist_to_goal, dist_acc, flight_time;
 
-        dynamic_msgs::Obstacle getStraightObstacle(double t) {
-            dynamic_msgs::Obstacle straightObstacle;
+        Obstacle getStraightObstacle(double t) {
+            Obstacle straightObstacle;
             point3d obs_position, obs_velocity;
 
             if (dist_to_goal > 2 * dist_acc) {
@@ -207,8 +206,8 @@ namespace DynamicPlanning {
                 }
             }
 
-            straightObstacle.pose.position = point3DToPointMsg(obs_position);
-            straightObstacle.velocity.linear = point3DToVector3Msg(obs_velocity);
+            straightObstacle.position = obs_position;
+            straightObstacle.velocity = obs_velocity;
 
             return straightObstacle;
         }
@@ -234,7 +233,7 @@ namespace DynamicPlanning {
             }
         }
 
-        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
+        Obstacle getObstacle_impl(double t) override {
             return getPatrolObstacle(t);
         }
 
@@ -244,8 +243,8 @@ namespace DynamicPlanning {
         std::vector<StraightObstacle> straightObstacles;
         double speed;
 
-        dynamic_msgs::Obstacle getPatrolObstacle(double t) {
-            dynamic_msgs::Obstacle patrolObstacle;
+        Obstacle getPatrolObstacle(double t) {
+            Obstacle patrolObstacle;
 
             double current_time = t;
             int current_idx = 0;
@@ -276,57 +275,57 @@ namespace DynamicPlanning {
             chasing_target_id = -1;
         }
 
-        ChasingObstacle(const dynamic_msgs::Obstacle &_start_state, double _radius, double _max_vel, double _max_acc,
+        ChasingObstacle(const Obstacle &_start_state, double _radius, double _max_vel, double _max_acc,
                         double _gamma_target, double _gamma_obs, double _downwash)
                 : ObstacleBase(_radius, _max_acc, _downwash) {
             type = "chasing";
-            current_state.pose.position = _start_state.pose.position;
-            current_state.velocity.linear.x = 0;
-            current_state.velocity.linear.y = 0;
-            current_state.velocity.linear.z = 0;
+            current_state.position = _start_state.position;
+            current_state.velocity.x() = 0;
+            current_state.velocity.y() = 0;
+            current_state.velocity.z() = 0;
             max_vel = _max_vel;
             gamma_target = _gamma_target;
             gamma_obs = _gamma_obs;
-            goal_point = current_state.pose.position;
+            goal_point = current_state.position;
             t_last_called = 0;
             chasing_target_id = -1;
         }
 
-        void setGoalPoint(const geometry_msgs::Point &_goal_point) {
+        void setGoalPoint(const point3d &_goal_point) {
             goal_point = _goal_point;
         }
 
-        void setObstacles(const std::vector<dynamic_msgs::Obstacle> &_obstacles) {
+        void setObstacles(const std::vector<Obstacle> &_obstacles) {
             obstacles = _obstacles;
         }
 
-        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
+        Obstacle getObstacle_impl(double t) override {
             return getChasingObstacle(t);
         }
 
     private:
-        dynamic_msgs::Obstacle current_state;
+        Obstacle current_state;
         double t_last_called, max_vel, gamma_target, gamma_obs;
-        geometry_msgs::Point goal_point;
-        std::vector<dynamic_msgs::Obstacle> obstacles;
+        point3d goal_point;
+        std::vector<Obstacle> obstacles;
         int chasing_target_id;
 
-        dynamic_msgs::Obstacle getChasingObstacle(double t) {
-            dynamic_msgs::Obstacle chasingObstacle;
-            Eigen::Vector3d delta_goal(goal_point.x - current_state.pose.position.x,
-                                       goal_point.y - current_state.pose.position.y,
-                                       goal_point.z - current_state.pose.position.z);
+        Obstacle getChasingObstacle(double t) {
+            Obstacle chasingObstacle;
+            Eigen::Vector3d delta_goal(goal_point.x() - current_state.position.x(),
+                                       goal_point.y() - current_state.position.y(),
+                                       goal_point.z() - current_state.position.z());
 
             Eigen::Vector3d a = gamma_target * delta_goal;
-            Eigen::Vector3d v(current_state.velocity.linear.x,
-                              current_state.velocity.linear.y,
-                              current_state.velocity.linear.z);
+            Eigen::Vector3d v(current_state.velocity.x(),
+                              current_state.velocity.y(),
+                              current_state.velocity.z());
             double dt = t - t_last_called;
 
             for (const auto &obstacle: obstacles) {
-                Eigen::Vector3d delta_obstacle(obstacle.pose.position.x - current_state.pose.position.x,
-                                               obstacle.pose.position.y - current_state.pose.position.y,
-                                               obstacle.pose.position.z - current_state.pose.position.z);
+                Eigen::Vector3d delta_obstacle(obstacle.position.x() - current_state.position.x(),
+                                               obstacle.position.y() - current_state.position.y(),
+                                               obstacle.position.z() - current_state.position.z());
                 double dist_to_obs = delta_obstacle.norm();
                 if (dist_to_obs < SP_EPSILON_FLOAT) {
                     continue;
@@ -348,15 +347,15 @@ namespace DynamicPlanning {
             }
 
             //update current_state
-            current_state.pose.position.x = current_state.pose.position.x + v(0) * dt;
-            current_state.pose.position.y = current_state.pose.position.y + v(1) * dt;
-            current_state.pose.position.z = current_state.pose.position.z + v(2) * dt;
-            current_state.velocity.linear.x = v(0);
-            current_state.velocity.linear.y = v(1);
-            current_state.velocity.linear.z = v(2);
+            current_state.position.x() = current_state.position.x() + v(0) * dt;
+            current_state.position.y() = current_state.position.y() + v(1) * dt;
+            current_state.position.z() = current_state.position.z() + v(2) * dt;
+            current_state.velocity.x() = v(0);
+            current_state.velocity.y() = v(1);
+            current_state.velocity.z() = v(2);
 
-            chasingObstacle.pose.position = current_state.pose.position;
-            chasingObstacle.velocity.linear = current_state.velocity.linear;
+            chasingObstacle.position = current_state.position;
+            chasingObstacle.velocity = current_state.velocity;
             chasingObstacle.radius = radius;
 
             t_last_called = t;
@@ -371,8 +370,8 @@ namespace DynamicPlanning {
             acc_history_horizon = 0;
         }
 
-        GaussianObstacle(geometry_msgs::Point _start, double _radius,
-                         geometry_msgs::Vector3 _initial_vel, double _max_vel,
+        GaussianObstacle(point3d _start, double _radius,
+                         point3d _initial_vel, double _max_vel,
                          double _stddev_acc, double _max_acc, double _acc_update_cycle,
                          double _downwash)
                 : ObstacleBase(_radius, _max_acc, _downwash),
@@ -384,7 +383,7 @@ namespace DynamicPlanning {
             update_acc_history(10);
         }
 
-        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
+        Obstacle getObstacle_impl(double t) override {
             return getGaussianObstacle(t);
         }
 
@@ -393,9 +392,9 @@ namespace DynamicPlanning {
         }
 
     private:
-        geometry_msgs::Point start;
+        point3d start;
         std::vector<Eigen::Vector3d> acc_history;
-        geometry_msgs::Vector3 initial_vel;
+        point3d initial_vel;
         double max_vel;
         double stddev_acc, max_acc, acc_update_cycle;
         double acc_history_horizon;
@@ -422,10 +421,10 @@ namespace DynamicPlanning {
             }
         }
 
-        dynamic_msgs::Obstacle getGaussianObstacle(double t) {
-            dynamic_msgs::Obstacle gaussianObstacle;
-            gaussianObstacle.pose.position = start;
-            gaussianObstacle.velocity.linear = initial_vel;
+        Obstacle getGaussianObstacle(double t) {
+            Obstacle gaussianObstacle;
+            gaussianObstacle.position = start;
+            gaussianObstacle.velocity = initial_vel;
 
             // update acc history
             if (t >= acc_history_horizon) {
@@ -439,7 +438,7 @@ namespace DynamicPlanning {
             if (acc_history.size() < n + 1) {
                 ROS_ERROR("acc history size error");
             }
-            Eigen::Vector3d v(initial_vel.x, initial_vel.y, initial_vel.z);
+            Eigen::Vector3d v(initial_vel.x(), initial_vel.y(), initial_vel.z());
             Eigen::Vector3d v_next;
             double dt = acc_update_cycle;
             for (int i = 0; i < n + 1; i++) {
@@ -451,16 +450,16 @@ namespace DynamicPlanning {
                 v_next = v + acc * dt;
                 if (v_next.norm() > max_vel) {
                     // If v is over max_vel then ignore acc
-                    gaussianObstacle.pose.position.x += v(0) * dt;
-                    gaussianObstacle.pose.position.y += v(1) * dt;
-                    gaussianObstacle.pose.position.z += v(2) * dt;
+                    gaussianObstacle.position.x() += v(0) * dt;
+                    gaussianObstacle.position.y() += v(1) * dt;
+                    gaussianObstacle.position.z() += v(2) * dt;
                 } else {
-                    gaussianObstacle.pose.position.x += v(0) * dt + 0.5 * acc(0) * dt * dt;
-                    gaussianObstacle.pose.position.y += v(1) * dt + 0.5 * acc(1) * dt * dt;
-                    gaussianObstacle.pose.position.z += v(2) * dt + 0.5 * acc(2) * dt * dt;
-                    gaussianObstacle.velocity.linear.x += acc(0) * dt;
-                    gaussianObstacle.velocity.linear.y += acc(1) * dt;
-                    gaussianObstacle.velocity.linear.z += acc(2) * dt;
+                    gaussianObstacle.position.x() += v(0) * dt + 0.5 * acc(0) * dt * dt;
+                    gaussianObstacle.position.y() += v(1) * dt + 0.5 * acc(1) * dt * dt;
+                    gaussianObstacle.position.z() += v(2) * dt + 0.5 * acc(2) * dt * dt;
+                    gaussianObstacle.velocity.x() += acc(0) * dt;
+                    gaussianObstacle.velocity.y() += acc(1) * dt;
+                    gaussianObstacle.velocity.z() += acc(2) * dt;
                     v = v_next;
                 }
             }
@@ -468,86 +467,6 @@ namespace DynamicPlanning {
             return gaussianObstacle;
         }
     };
-
-//    class StaticObstacle : public ObstacleBase {
-//    public:
-//        StaticObstacle() : ObstacleBase(0, 0, 1) {
-//            type = "static";
-//        }
-//
-//        StaticObstacle(geometry_msgs::Point _pose, geometry_msgs::Point _dimensions)
-//                : pose(_pose), dimensions(_dimensions), ObstacleBase(0, 0, 1)
-//        {
-//            type = "static";
-//        }
-//
-//        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
-//            return getStaticObstacle();
-//        }
-//
-//    private:
-//        geometry_msgs::Point pose;
-//        geometry_msgs::Point dimensions;
-//
-//        dynamic_msgs::Obstacle getStaticObstacle() {
-//            dynamic_msgs::Obstacle staticObstacle;
-//            staticObstacle.pose.position = pose;
-//
-//            staticObstacle.dimensions.resize(3);
-//            staticObstacle.dimensions[0] = dimensions.x;
-//            staticObstacle.dimensions[1] = dimensions.y;
-//            staticObstacle.dimensions[2] = dimensions.z;
-//
-//            staticObstacle.velocity.linear.x = 0;
-//            staticObstacle.velocity.linear.y = 0;
-//            staticObstacle.velocity.linear.z = 0;
-//
-//            staticObstacle.goal_point = pose;
-//            staticObstacle.max_acc = 0;
-//            staticObstacle.downwash = 1;
-//            staticObstacle.id = -1;
-//            staticObstacle.radius = -1;
-//
-//            return staticObstacle;
-//        }
-//    };
-
-//    class BernsteinObstacle : public ObstacleBase {
-//    public:
-//        BernsteinObstacle(std::vector<points_t> _control_points, std::vector<double> _time_segments,
-//                          double _radius, double _max_acc, double _downwash)
-//                : control_points(std::move(_control_points)), time_segments(_time_segments), ObstacleBase(_radius, _max_acc, _downwash) {
-//            type = "bernstein";
-//
-//            M = control_points.size();
-//            n = control_points[0].size() - 1;
-//        }
-//
-//        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
-//            return getBernsteinObstacle(t);
-//        }
-//
-//        dynamic_msgs::State getObstacleState(double t) {
-//            dynamic_msgs::State state;
-//            state = getStateFromControlPoints(control_points, t, M, n, time_segments);
-//            return state;
-//        }
-//
-//    private:
-//        std::vector<points_t> control_points;
-//        std::vector<double> time_segments;
-//        int M, n;
-//
-//        dynamic_msgs::Obstacle getBernsteinObstacle(double t) {
-//            dynamic_msgs::Obstacle bernsteinObstacle;
-//            dynamic_msgs::State state;
-//            state = getStateFromControlPoints(control_points, t, M, n, time_segments);
-//            bernsteinObstacle.pose = state.pose;
-//            bernsteinObstacle.velocity = state.velocity;
-//
-//            return bernsteinObstacle;
-//        }
-//    };
 
     class RealObstacle : public ObstacleBase {
     public:
@@ -561,13 +480,13 @@ namespace DynamicPlanning {
             type = "real";
         }
 
-        dynamic_msgs::Obstacle getObstacle_impl(double t) override {
+        Obstacle getObstacle_impl(double t) override {
             return getRealObstacle();
         }
 
     private:
-        dynamic_msgs::Obstacle getRealObstacle() {
-            dynamic_msgs::Obstacle realObstacle;
+        Obstacle getRealObstacle() {
+            Obstacle realObstacle;
             return realObstacle;
         }
     };

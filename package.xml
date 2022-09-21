@@ -69,7 +69,6 @@
   <exec_depend>octomap_msgs</exec_depend>
   <exec_depend>pcl_ros</exec_depend>
 
-
   <export>
 
   </export>

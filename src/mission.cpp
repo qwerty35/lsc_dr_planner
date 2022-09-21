@@ -9,7 +9,7 @@ namespace DynamicPlanning {
         nh.param<std::string>("mission", mission_file_name, "default.json");
         nh.param<std::string>("world/file_name", world_file_name, "default.bt");
 
-        std::string package_path = ros::package::getPath("dynamic_planner");
+        std::string package_path = ros::package::getPath("lsc_dr_planner");
         if (mission_file_name.find(".json") != std::string::npos) {
             mission_file_names.emplace_back(package_path + "/missions/" + mission_file_name);
         } else {
@@ -56,7 +56,7 @@ namespace DynamicPlanning {
     }
 
     bool Mission::changeMission(const std::string& new_mission, double max_noise, int world_dimension, double world_z_2d){
-        std::string package_path = ros::package::getPath("dynamic_planner");
+        std::string package_path = ros::package::getPath("lsc_dr_planner");
         std::string new_mission_file_name = package_path + "/missions/" + new_mission;
 
         try{
@@ -294,11 +294,11 @@ namespace DynamicPlanning {
                 obstacles[oi] = std::make_shared<PatrolObstacle>(obs_waypoints, obs_size, obs_speed, obs_max_acc,
                                                                  obs_downwash);
             } else if (type == "chasing") {
-                dynamic_msgs::Obstacle obs_start_state;
+                Obstacle obs_start_state;
                 const Value &start = obstacle_list[oi].GetObject()["start"];
-                obs_start_state.pose.position.x = start[0].GetDouble();
-                obs_start_state.pose.position.y = start[1].GetDouble();
-                obs_start_state.pose.position.z = start[2].GetDouble();
+                obs_start_state.position.x() = start[0].GetDouble();
+                obs_start_state.position.y() = start[1].GetDouble();
+                obs_start_state.position.z() = start[2].GetDouble();
 
                 double obs_size = obstacle_list[oi].GetObject()["size"].GetDouble();
                 double obs_max_vel = obstacle_list[oi].GetObject()["max_vel"].GetDouble();
@@ -314,17 +314,17 @@ namespace DynamicPlanning {
                                                                   obs_gamma_target, obs_gamma_obs,
                                                                   obs_downwash);
             } else if(type == "gaussian"){
-                geometry_msgs::Point obs_start;
+                point3d obs_start;
                 const Value &start = obstacle_list[oi].GetObject()["start"];
-                obs_start.x = start[0].GetDouble();
-                obs_start.y = start[1].GetDouble();
-                obs_start.z = start[2].GetDouble();
+                obs_start.x() = start[0].GetDouble();
+                obs_start.y() = start[1].GetDouble();
+                obs_start.z() = start[2].GetDouble();
 
-                geometry_msgs::Vector3 obs_initial_vel;
+                point3d obs_initial_vel;
                 const Value &initial_vel = obstacle_list[oi].GetObject()["initial_vel"];
-                obs_initial_vel.x = initial_vel[0].GetDouble();
-                obs_initial_vel.y = initial_vel[1].GetDouble();
-                obs_initial_vel.z = initial_vel[2].GetDouble();
+                obs_initial_vel.x() = initial_vel[0].GetDouble();
+                obs_initial_vel.y() = initial_vel[1].GetDouble();
+                obs_initial_vel.z() = initial_vel[2].GetDouble();
 
                 double obs_size = obstacle_list[oi].GetObject()["size"].GetDouble();
                 double obs_max_vel = obstacle_list[oi].GetObject()["max_vel"].GetDouble();

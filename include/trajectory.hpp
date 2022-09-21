@@ -39,7 +39,7 @@ namespace DynamicPlanning {
 
         [[nodiscard]] T getPointAt(double time) const;
 
-        [[nodiscard]] dynamic_msgs::State getStateAt(double time) const;
+        [[nodiscard]] State getStateAt(double time) const;
 
         [[nodiscard]] T startPoint() const;
 
@@ -52,10 +52,6 @@ namespace DynamicPlanning {
         [[nodiscard]] bool empty() const;
 
         void clear();
-
-        void trajMsgToTraj(const dynamic_msgs::Trajectory &msg); // Only for point3d
-
-        [[nodiscard]] dynamic_msgs::Trajectory toTrajMsg(int id) const; // Only for point3d
 
         [[nodiscard]] visualization_msgs::Marker toMarkerMsg(int agent_id,
                                                const std::string &frame_id,

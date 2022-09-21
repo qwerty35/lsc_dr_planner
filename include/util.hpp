@@ -4,8 +4,6 @@
 #include <sp_const.hpp>
 #include <polynomial.hpp>
 #include <dynamicEDT3D/dynamicEDTOctomap.h>
-#include <dynamic_msgs/Trajectory.h>
-#include <dynamic_msgs/State.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/LinearMath/Vector3.h>
@@ -119,16 +117,6 @@ namespace DynamicPlanning {
 
     static point3d arrayToPoint3D(double* array){
         return point3d(array[0], array[1], array[2]);
-    }
-
-    static dynamic_msgs::State odomMsgToState(const nav_msgs::Odometry& msg){
-        dynamic_msgs::State state;
-        state.pose = msg.pose.pose;
-        state.velocity = msg.twist.twist;
-        state.acceleration.linear = defaultVector();
-        state.acceleration.angular = defaultVector();
-
-        return state;
     }
 
     static double LInfinityDistance(const point3d &p1, const point3d &p2){

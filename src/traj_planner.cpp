@@ -72,32 +72,8 @@ namespace DynamicPlanning {
         publishLSC();
     }
 
-    void TrajPlanner::setObstacles(const dynamic_msgs::ObstacleArray &msg_obstacles) {
-        obstacles.resize(msg_obstacles.obstacles.size());
-        constraints.clearSlackObstacles();
-
-        for (size_t oi = 0; oi < msg_obstacles.obstacles.size(); oi++) {
-            obstacles[oi].start_time = msg_obstacles.start_time;
-            if (obstacles[oi].update_time < msg_obstacles.header.stamp) {
-                obstacles[oi].update_time = msg_obstacles.header.stamp;
-            }
-
-            dynamic_msgs::Obstacle obstacle = msg_obstacles.obstacles[oi];
-            obstacles[oi].id = obstacle.id;
-            obstacles[oi].type = static_cast<ObstacleType>(obstacle.type);
-            obstacles[oi].radius = obstacle.radius;
-            obstacles[oi].downwash = obstacle.downwash;
-            obstacles[oi].position = pointMsgToPoint3d(obstacle.pose.position);
-            obstacles[oi].velocity = vector3MsgToPoint3d(obstacle.velocity.linear);
-            obstacles[oi].max_acc = obstacle.max_acc;
-            obstacles[oi].goal_point = pointMsgToPoint3d(obstacle.goal);
-            obstacles[oi].collision_alert = obstacle.collision_alert;
-            obstacles[oi].prev_traj.trajMsgToTraj(obstacle.prev_traj);
-
-            if (obstacles[oi].type == ObstacleType::DYNAMICOBSTACLE) {
-                constraints.addSlackObstacle(oi);
-            }
-        }
+    void TrajPlanner::setObstacles(const std::vector<Obstacle> &msg_obstacles) {
+        obstacles = msg_obstacles;
     }
 
     int TrajPlanner::getPlannerSeq() const {
@@ -337,7 +313,6 @@ namespace DynamicPlanning {
         for (size_t oi = 0; oi < obstacles.size(); oi++) {
             point3d obs_position = obstacles[oi].position;
             if ((obs_pred_trajs[oi].startPoint() - obs_position).norm() > param.reset_threshold) {
-                constraints.addSlackObstacle(oi);
                 obs_pred_trajs[oi].planConstVelTraj(obs_position, point3d(0, 0, 0));
             }
         }
@@ -450,10 +425,6 @@ namespace DynamicPlanning {
     void TrajPlanner::initialTrajPlanningCheck() {
         // If the agent is disturbed, consider all agents as dynamic obstacles.
         if (is_disturbed) {
-            for (size_t oi = 0; oi < obstacles.size(); oi++) {
-                constraints.addSlackObstacle(oi);
-            }
-
             initialTrajPlanningCurrPos();
             initialize_sfc = true;
         }
@@ -831,17 +802,6 @@ namespace DynamicPlanning {
         return result.desired_traj;
     }
 
-//    void TrajPlanner::publishCollisionConstraints() {
-//        dynamic_msgs::CollisionConstraint msg_collision_constraints_raw;
-//        visualization_msgs::MarkerArray msg_collision_constraints_vis;
-////        msg_collision_constraints_raw = constraints.convertToRawMsg(obstacles, planner_seq);
-//        msg_collision_constraints_vis = constraints.convertToMarkerArrayMsg(obstacles, mission.color, agent.id,
-//                                                                            agent.radius);
-//
-////        pub_collision_constraints_raw.publish(msg_collision_constraints_raw);
-//        pub_collision_constraints_vis.publish(msg_collision_constraints_vis);
-//    }
-
     void TrajPlanner::publishSFC(){
         visualization_msgs::MarkerArray msg_sfc;
         msg_sfc = constraints.convertSFCsToMarkerArrayMsg(mission.color[agent.id], agent.radius);
@@ -926,16 +886,6 @@ namespace DynamicPlanning {
             }
         }
         pub_obs_pred_traj_vis.publish(msg_obs_pred_traj_vis);
-
-//        // obstacle prediction raw
-//        size_t N_obs = obstacles.size();
-//        dynamic_msgs::TrajectoryArray msg_obs_pred_traj_raw;
-//        msg_obs_pred_traj_raw.trajectories.resize(N_obs);
-//        for (int oi = 0; oi < N_obs; oi++) {
-//            msg_obs_pred_traj_raw.trajectories[oi] = obs_pred_trajs[oi].toTrajMsg(obstacles[oi].id);
-//            msg_obs_pred_traj_raw.trajectories[oi].planner_seq = planner_seq;
-//        }
-//        pub_obs_pred_traj_raw.publish(msg_obs_pred_traj_raw);
     }
 
     void TrajPlanner::publishGridOccupiedPoints() {
@@ -1079,15 +1029,13 @@ namespace DynamicPlanning {
 
         // Check dynamical limit
         double dyn_err_tol_ratio = 0.01;
-        dynamic_msgs::State state = result.desired_traj.getStateAt(param.multisim_time_step);
-        vector3d vel = vector3MsgToPoint3d(state.velocity.linear);
-        vector3d acc = vector3MsgToPoint3d(state.acceleration.linear);
+        State state = result.desired_traj.getStateAt(param.multisim_time_step);
         for(int k = 0; k < param.world_dimension; k++){
-            if(abs(vel(k)) > agent.max_vel[k] * (1 + dyn_err_tol_ratio)) {
+            if(abs(state.velocity(k)) > agent.max_vel[k] * (1 + dyn_err_tol_ratio)) {
                 ROS_WARN("[TrajPlanner] solution is not valid due to max_vel");
                 return false;
             }
-            if(abs(acc(k)) > agent.max_acc[k] * (1 + dyn_err_tol_ratio)) {
+            if(abs(state.acceleration(k)) > agent.max_acc[k] * (1 + dyn_err_tol_ratio)) {
                 ROS_WARN("[TrajPlanner] solution is not valid due to max_acc");
                 return false;
             }

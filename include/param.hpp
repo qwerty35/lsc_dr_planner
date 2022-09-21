@@ -21,7 +21,6 @@ namespace DynamicPlanning{
         double world_max_dist;
 
         // Multisim setting
-        bool multisim_experiment;
         bool multisim_patrol;
         int multisim_qn;
 

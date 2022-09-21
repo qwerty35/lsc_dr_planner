@@ -4,7 +4,6 @@
 #include <vector>
 #include <octomap/octomap_types.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <dynamic_msgs/CollisionConstraint.h>
 #include <sp_const.hpp>
 #include <param.hpp>
 #include <mission.hpp>
@@ -118,10 +117,6 @@ namespace DynamicPlanning {
                                              const Box &sfc_prev,
                                              int m);
 
-        void clearSlackObstacles();
-
-        void addSlackObstacle(int obs_idx);
-
         // Getter
         [[nodiscard]] LSC getLSC(int oi, int m, int i) const;
 
@@ -158,14 +153,6 @@ namespace DynamicPlanning {
         void setSFC(int m, const Box &sfc);
 
         // Converter
-//        [[nodiscard]] visualization_msgs::MarkerArray convertToMarkerArrayMsg(
-//                const std::vector<Obstacle> &obstacles,
-//                const std::vector<std_msgs::ColorRGBA> &colors,
-//                int agent_id, double agent_radius) const;
-
-//        [[nodiscard]] dynamic_msgs::CollisionConstraint convertToRawMsg(const std::vector<Obstacle>& obstacles,
-//                                                                        int planner_seq) const;
-
         [[nodiscard]] visualization_msgs::MarkerArray convertLSCsToMarkerArrayMsg(
                 const std::vector<Obstacle> &obstacles,
                 const std::vector<std_msgs::ColorRGBA> &colors,
