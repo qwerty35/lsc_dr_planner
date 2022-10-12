@@ -33,6 +33,8 @@ export ROS_DISTRO=noetic
 sudo apt-get install ros-$ROS_DISTRO-octomap
 sudo apt-get install ros-$ROS_DISTRO-octomap-*
 sudo apt-get install ros-$ROS_DISTRO-dynamic-edt-3d
+cd ~/catkin_ws/src
+git clone https://github.com/qwerty35/lsc_dr_planner.git
 ```
 
 (5) Before building packages, check CMAKELIST that CPLEX_PREFIX_DIR is indicating the intallation location. For instance, if CPLEX is installed in ```/opt/ibm/ILOG/CPLEX_Studio201```, then CPLEX_PREFIX_DIR should be:
