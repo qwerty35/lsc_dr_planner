@@ -34,7 +34,7 @@ link_libraries(${DYNAMICEDT3D_LIBRARIES})
 #CPLEX
 add_definitions(-DNDEBUG)
 add_definitions(-DIL_STD)
-set(CPLEX_PREFIX_DIR      /opt/ibm/ILOG/CPLEX_Studio201)
+set(CPLEX_PREFIX_DIR      /opt/ibm/ILOG/CPLEX_Studio221)
 set(CPLEX_INCLUDE_DIR     ${CPLEX_PREFIX_DIR}/cplex/include)
 set(CPLEX_LIBRARIES_DIR   ${CPLEX_PREFIX_DIR}/cplex/lib/x86-64_linux/static_pic)
 set(CONCERT_INCLUDE_DIR   ${CPLEX_PREFIX_DIR}/concert/include)
