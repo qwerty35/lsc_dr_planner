@@ -4,7 +4,7 @@ This package presents a decentralized deadlock-free multi-agent trajectory plann
 The details about this algorithm can be found at the following links.
 
 - **Authors:** Jungwon Park, Inkyu Jang, and H. Jin Kim from [LARR](http://larr.snu.ac.kr/), Seoul National University
-- **Paper:** [Extended version](https://arxiv.org/abs/2209.09447)
+- **Paper:** [Extended version](https://arxiv.org/abs/2209.09447) (NOTE: this version includes the detailed proof that omitted in the ICRA version)
 - **Video:** [Youtube](https://youtu.be/PqfdbVfSujA)
 
 ![alt text](images/thumbnail.gif)
@@ -49,11 +49,26 @@ catkin_make
 source ~/catkin_ws/devel/setup.bash
 ```
 
-
 ## 2. Demo
+- Run single mission
 ```
 source ~/catkin_ws/devel/setup.bash
 roslaunch lsc_dr_planner simulation.launch
+```
+- Run simulation in the random forest sequentially 
+```
+source ~/catkin_ws/devel/setup.bash
+roslaunch lsc_dr_planner test_all_forest.launch
+```
+- Run simulation in the sparse maze sequentially
+```
+source ~/catkin_ws/devel/setup.bash
+roslaunch lsc_dr_planner test_all_maze_sparse.launch
+```
+- Run simulation in the dense maze sequentially
+```
+source ~/catkin_ws/devel/setup.bash
+roslaunch lsc_dr_planner test_all_maze_dense.launch
 ```
 The simulation result will be saved at ```lsc_dr_planner/log```.
 
@@ -76,6 +91,3 @@ This work is implemented based on the following packages.
 (3) openGJK (https://www.mattiamontanari.com/opengjk/)
 
 (4) convhull_3d (https://github.com/leomccormack/convhull_3d)
-
-## 5. Notes
-(1) Grid based planner issue: This code is not fully tested with various maps. Grid based planner may not work with some maps.

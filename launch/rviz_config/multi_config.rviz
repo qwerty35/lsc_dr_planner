@@ -135,7 +135,7 @@ Visualization Manager:
         current_goal: true
         desired_goal: true
         next_waypoint: true
-        start: true
+        start: false
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -235,10 +235,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 85.09767150878906
+      Scale: 157.94725036621094
       Target Frame: <Fixed Frame>
-      X: -0.5
-      Y: 0
+      X: 2.4048924446105957
+      Y: 1.8577852249145508
     Saved: ~
 Window Geometry:
   Displays:

@@ -3,7 +3,7 @@
 <launch>
 <!-- Parameters -->
   <!-- Mission -->
-  <arg name="mission" default="maze10_dense/maze10_1.json"/> <!-- Mission file, see missions/readme.txt for more details -->
+  <arg name="mission" default="maze10_sparse"/> <!-- Mission file, see missions/readme.txt for more details -->
   <arg name="patrol" default="false"/> <!-- Change the mission to patrol between start and goal points -->
   <arg name="max_noise" default="0.0"/> <!-- Add noise to start and goal point -->
   <arg name="experiment" default="false" /> <!-- For experiment -->
@@ -11,7 +11,7 @@
 
   <!-- Map -->
   <arg name="use_octomap" default="true"/> <!-- Use octomap to set obstacle environment. -->
-  <arg name="world_file_name" default="maze/dense/maze1.csv"/> <!-- CSV (.csv) or Octomap (.bt) file name. File must be in lsc_dr_planner/world-->
+  <arg name="world_file_name" default="maze/sparse"/> <!-- CSV (.csv) or Octomap (.bt) file name. File must be in lsc_dr_planner/world-->
   <arg name="world_use_global_map" default="true"/>
   <arg name="world_frame_id" default="world"/> <!-- World frame id used in Rviz -->
   <arg name="world_resolution" default="0.1"/> <!-- Octomap resolution -->
