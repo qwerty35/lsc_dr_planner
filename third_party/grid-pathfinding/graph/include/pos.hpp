@@ -4,8 +4,9 @@ namespace MAPF {
     struct Pos {
         int x;
         int y;
+        int z;
 
-        Pos(int _x, int _y);
+        Pos(int _x, int _y, int _z);
 
         ~Pos();
 

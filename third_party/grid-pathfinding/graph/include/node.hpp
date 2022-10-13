@@ -12,7 +12,7 @@ namespace MAPF {
         const Pos pos;
         Nodes neighbor;
 
-        Node(int _id, int x, int y);
+        Node(int _id, int x, int y, int z);
 
         ~Node();
 

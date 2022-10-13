@@ -6,119 +6,119 @@
 #include "../include/mapf/util.hpp"
 
 using namespace MAPF;
-Problem::Problem(const std::string& _instance)
-    : instance(_instance), instance_initialized(true)
-{
-  // read instance file
-  std::ifstream file(instance);
-  if (!file) halt("file " + instance + " is not found.");
-
-  std::string line;
-  std::smatch results;
-  std::regex r_comment = std::regex(R"(#.+)");
-  std::regex r_map = std::regex(R"(map_file=(.+))");
-  std::regex r_agents = std::regex(R"(agents=(\d+))");
-  std::regex r_seed = std::regex(R"(seed=(\d+))");
-  std::regex r_random_problem = std::regex(R"(random_problem=(\d+))");
-  std::regex r_well_formed = std::regex(R"(well_formed=(\d+))");
-  std::regex r_max_timestep = std::regex(R"(max_timestep=(\d+))");
-  std::regex r_max_comp_time = std::regex(R"(max_comp_time=(\d+))");
-  std::regex r_sg = std::regex(R"((\d+),(\d+),(\d+),(\d+))");
-
-  bool read_scen = true;
-  bool well_formed = false;
-  while (getline(file, line)) {
-    // for CRLF coding
-    if (*(line.end() - 1) == 0x0d) line.pop_back();
-    // comment
-    if (std::regex_match(line, results, r_comment)) {
-      continue;
-    }
-    // read map
-    if (std::regex_match(line, results, r_map)) {
-      G = new Grid(results[1].str());
-      continue;
-    }
-    // set agent num
-    if (std::regex_match(line, results, r_agents)) {
-      num_agents = std::stoi(results[1].str());
-      continue;
-    }
-    // set random seed
-    if (std::regex_match(line, results, r_seed)) {
-      MT = new std::mt19937(std::stoi(results[1].str()));
-      continue;
-    }
-    // skip reading initial/goal nodes
-    if (std::regex_match(line, results, r_random_problem)) {
-      if (std::stoi(results[1].str())) {
-        read_scen = false;
-        config_s.clear();
-        config_g.clear();
-      }
-      continue;
-    }
-    //
-    if (std::regex_match(line, results, r_well_formed)) {
-      if (std::stoi(results[1].str())) well_formed = true;
-      continue;
-    }
-    // set max timestep
-    if (std::regex_match(line, results, r_max_timestep)) {
-      max_timestep = std::stoi(results[1].str());
-      continue;
-    }
-    // set max computation time
-    if (std::regex_match(line, results, r_max_comp_time)) {
-      max_comp_time = std::stoi(results[1].str());
-      continue;
-    }
-    // read initial/goal nodes
-    if (std::regex_match(line, results, r_sg) && read_scen &&
-        (int)config_s.size() < num_agents) {
-      int x_s = std::stoi(results[1].str());
-      int y_s = std::stoi(results[2].str());
-      int x_g = std::stoi(results[3].str());
-      int y_g = std::stoi(results[4].str());
-      if (!G->existNode(x_s, y_s)) {
-        halt("start node (" + std::to_string(x_s) + ", " + std::to_string(y_s) +
-             ") does not exist, invalid scenario");
-      }
-      if (!G->existNode(x_g, y_g)) {
-        halt("goal node (" + std::to_string(x_g) + ", " + std::to_string(y_g) +
-             ") does not exist, invalid scenario");
-      }
-
-      Node* s = G->getNode(x_s, y_s);
-      Node* g = G->getNode(x_g, y_g);
-      config_s.push_back(s);
-      config_g.push_back(g);
-    }
-  }
-
-  // set default value not identified params
-  if (MT == nullptr) MT = new std::mt19937(DEFAULT_SEED);
-  if (max_timestep == 0) max_timestep = DEFAULT_MAX_TIMESTEP;
-  if (max_comp_time == 0) max_comp_time = DEFAULT_MAX_COMP_TIME;
-
-  // check starts/goals
-  if (num_agents <= 0) halt("invalid number of agents");
-  const int config_s_size = config_s.size();
-  if (!config_s.empty() && num_agents > config_s_size) {
-    warn("given starts/goals are not sufficient\nrandomly create instances");
-  }
-  if (num_agents > config_s_size) {
-    if (well_formed) {
-      setWellFormedInstance();
-    } else {
-      setRandomStartsGoals();
-    }
-  }
-
-  // trimming
-  config_s.resize(num_agents);
-  config_g.resize(num_agents);
-}
+//Problem::Problem(const std::string& _instance)
+//    : instance(_instance), instance_initialized(true)
+//{
+//  // read instance file
+//  std::ifstream file(instance);
+//  if (!file) halt("file " + instance + " is not found.");
+//
+//  std::string line;
+//  std::smatch results;
+//  std::regex r_comment = std::regex(R"(#.+)");
+//  std::regex r_map = std::regex(R"(map_file=(.+))");
+//  std::regex r_agents = std::regex(R"(agents=(\d+))");
+//  std::regex r_seed = std::regex(R"(seed=(\d+))");
+//  std::regex r_random_problem = std::regex(R"(random_problem=(\d+))");
+//  std::regex r_well_formed = std::regex(R"(well_formed=(\d+))");
+//  std::regex r_max_timestep = std::regex(R"(max_timestep=(\d+))");
+//  std::regex r_max_comp_time = std::regex(R"(max_comp_time=(\d+))");
+//  std::regex r_sg = std::regex(R"((\d+),(\d+),(\d+),(\d+))");
+//
+//  bool read_scen = true;
+//  bool well_formed = false;
+//  while (getline(file, line)) {
+//    // for CRLF coding
+//    if (*(line.end() - 1) == 0x0d) line.pop_back();
+//    // comment
+//    if (std::regex_match(line, results, r_comment)) {
+//      continue;
+//    }
+//    // read map
+//    if (std::regex_match(line, results, r_map)) {
+//      G = new Grid(results[1].str());
+//      continue;
+//    }
+//    // set agent num
+//    if (std::regex_match(line, results, r_agents)) {
+//      num_agents = std::stoi(results[1].str());
+//      continue;
+//    }
+//    // set random seed
+//    if (std::regex_match(line, results, r_seed)) {
+//      MT = new std::mt19937(std::stoi(results[1].str()));
+//      continue;
+//    }
+//    // skip reading initial/goal nodes
+//    if (std::regex_match(line, results, r_random_problem)) {
+//      if (std::stoi(results[1].str())) {
+//        read_scen = false;
+//        config_s.clear();
+//        config_g.clear();
+//      }
+//      continue;
+//    }
+//    //
+//    if (std::regex_match(line, results, r_well_formed)) {
+//      if (std::stoi(results[1].str())) well_formed = true;
+//      continue;
+//    }
+//    // set max timestep
+//    if (std::regex_match(line, results, r_max_timestep)) {
+//      max_timestep = std::stoi(results[1].str());
+//      continue;
+//    }
+//    // set max computation time
+//    if (std::regex_match(line, results, r_max_comp_time)) {
+//      max_comp_time = std::stoi(results[1].str());
+//      continue;
+//    }
+//    // read initial/goal nodes
+//    if (std::regex_match(line, results, r_sg) && read_scen &&
+//        (int)config_s.size() < num_agents) {
+//      int x_s = std::stoi(results[1].str());
+//      int y_s = std::stoi(results[2].str());
+//      int x_g = std::stoi(results[3].str());
+//      int y_g = std::stoi(results[4].str());
+//      if (!G->existNode(x_s, y_s)) {
+//        halt("start node (" + std::to_string(x_s) + ", " + std::to_string(y_s) +
+//             ") does not exist, invalid scenario");
+//      }
+//      if (!G->existNode(x_g, y_g)) {
+//        halt("goal node (" + std::to_string(x_g) + ", " + std::to_string(y_g) +
+//             ") does not exist, invalid scenario");
+//      }
+//
+//      Node* s = G->getNode(x_s, y_s);
+//      Node* g = G->getNode(x_g, y_g);
+//      config_s.push_back(s);
+//      config_g.push_back(g);
+//    }
+//  }
+//
+//  // set default value not identified params
+//  if (MT == nullptr) MT = new std::mt19937(DEFAULT_SEED);
+//  if (max_timestep == 0) max_timestep = DEFAULT_MAX_TIMESTEP;
+//  if (max_comp_time == 0) max_comp_time = DEFAULT_MAX_COMP_TIME;
+//
+//  // check starts/goals
+//  if (num_agents <= 0) halt("invalid number of agents");
+//  const int config_s_size = config_s.size();
+//  if (!config_s.empty() && num_agents > config_s_size) {
+//    warn("given starts/goals are not sufficient\nrandomly create instances");
+//  }
+//  if (num_agents > config_s_size) {
+//    if (well_formed) {
+//      setWellFormedInstance();
+//    } else {
+//      setRandomStartsGoals();
+//    }
+//  }
+//
+//  // trimming
+//  config_s.resize(num_agents);
+//  config_g.resize(num_agents);
+//}
 
 Problem::Problem(Problem* P, Config _config_s, Config _config_g,
                  int _max_comp_time, int _max_timestep)
@@ -157,24 +157,33 @@ Problem::Problem(const std::vector<std::vector<std::vector<int>>>& grid,
 
     // read initial/goal nodes
     for (size_t i = 0; i < num_agents; i++) {
-        int x_start = start_points[i][0];
-        int y_start = start_points[i][1];
-        int x_s = current_points[i][0];
-        int y_s = current_points[i][1];
-        int x_g = goal_points[i][0];
-        int y_g = goal_points[i][1];
-        if (!G->existNode(x_s, y_s)) {
-            halt("start node (" + std::to_string(x_s) + ", " + std::to_string(y_s) +
-                 ") does not exist, invalid scenario");
+        int start_x = start_points[i][0];
+        int start_y = start_points[i][1];
+        int start_z = start_points[i][2];
+        int current_x = current_points[i][0];
+        int current_y = current_points[i][1];
+        int current_z = current_points[i][2];
+        int goal_x = goal_points[i][0];
+        int goal_y = goal_points[i][1];
+        int goal_z = goal_points[i][2];
+        if (!G->existNode(start_x, start_y, start_z)) {
+            halt("start node (" + std::to_string(start_x) + ", " +
+                 std::to_string(start_y) + "," +
+                 std::to_string(start_z) + ") does not exist, invalid scenario");
         }
-        if (!G->existNode(x_g, y_g)) {
-            halt("goal node (" + std::to_string(x_g) + ", " + std::to_string(y_g) +
-                 ") does not exist, invalid scenario");
+        if (!G->existNode(current_x, current_y, current_z)) {
+            halt("current node (" + std::to_string(current_x) + ", " +
+                         std::to_string(current_y) + "," +
+                         std::to_string(current_z) + ") does not exist, invalid scenario");
+        }
+        if (!G->existNode(goal_x, goal_y, goal_z)) {
+            halt("goal node (" + std::to_string(goal_x) + ", " + std::to_string(goal_y) + ", " +
+                         std::to_string(goal_z) + ") does not exist, invalid scenario");
         }
 
-        Node* start = G->getNode(x_start, y_start);
-        Node* s = G->getNode(x_s, y_s);
-        Node* g = G->getNode(x_g, y_g);
+        Node* start = G->getNode(start_x, start_y, start_z);
+        Node* s = G->getNode(current_x, current_y, current_z);
+        Node* g = G->getNode(goal_x, goal_y, goal_z);
         config_start.push_back(start);
         config_s.push_back(s);
         config_g.push_back(g);
@@ -234,7 +243,7 @@ void Problem::setRandomStartsGoals()
 
   // get grid size
   Grid* grid = reinterpret_cast<Grid*>(G);
-  const int N = grid->getWidth() * grid->getHeight();
+  const int N = grid->getWidth() * grid->getDepth();
 
   // set starts
   std::vector<int> starts(N);

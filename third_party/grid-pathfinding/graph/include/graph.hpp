@@ -36,8 +36,8 @@ namespace MAPF {
 
         // body
     protected:
-        // V[y * width + x] = Node with position (x, y)
-        // if (x, y) is occupied then V[y * width + x] = nullptr
+        // V[z * width * depth + y * width + x] = Node with position (x, y, z)
+        // if (x, y, z) is occupied then V[z * width * depth + y * width + x] = nullptr
         Nodes V;
 
         // something strange
@@ -48,13 +48,13 @@ namespace MAPF {
 
         virtual ~Graph();
 
-        // in grid, id = y * width + x
+        // in grid, id = z * width * depth + y * width + x
         virtual bool existNode(int id) const { return false; };
 
-        virtual bool existNode(int x, int y) const { return false; };
+        virtual bool existNode(int x, int y, int z) const { return false; };
 
-        // in grid, id = y * width + x
-        virtual Node *getNode(int x, int y) const { return nullptr; };
+        // in grid, id = z * width * depth + y * width + x
+        virtual Node *getNode(int x, int y, int z) const { return nullptr; };
 
         virtual Node *getNode(int id) const { return nullptr; };
 
@@ -74,7 +74,7 @@ namespace MAPF {
         // get all nodes without nullptr
         Nodes getV() const;
 
-        // get width*height
+        // get width*depth*height
         int getNodesSize() const { return V.size(); }
     };
 
@@ -82,12 +82,13 @@ namespace MAPF {
     private:
         std::string map_file;
         int width;
+        int depth;
         int height;
 
     public:
         Grid() {};
 
-        Grid(const std::string &_map_file);
+//        Grid(const std::string &_map_file);
 
         Grid(const std::vector<std::vector<std::vector<int>>> &grid);
 
@@ -95,11 +96,11 @@ namespace MAPF {
 
         bool existNode(int id) const;
 
-        bool existNode(int x, int y) const;
+        bool existNode(int x, int y, int z) const;
 
         Node *getNode(int id) const;
 
-        Node *getNode(int x, int y) const;
+        Node *getNode(int x, int y, int z) const;
 
         int dist(const Node *const v, const Node *const u) const {
             return v->manhattanDist(u);
@@ -108,6 +109,8 @@ namespace MAPF {
         std::string getMapFileName() const { return map_file; };
 
         int getWidth() const { return width; }
+
+        int getDepth() const { return depth; }
 
         int getHeight() const { return height; }
     };

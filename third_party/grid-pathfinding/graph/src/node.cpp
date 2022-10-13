@@ -4,8 +4,8 @@
 #include <iostream>
 
 namespace MAPF {
-    Node::Node(int _id, int x, int y)
-            : id(_id), pos(Pos(x, y)) {}
+    Node::Node(int _id, int x, int y, int z)
+            : id(_id), pos(Pos(x, y, z)) {}
 
     Node::~Node() {}
 

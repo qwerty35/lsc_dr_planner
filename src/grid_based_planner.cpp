@@ -346,7 +346,7 @@ namespace DynamicPlanning {
                 for (size_t i = 0; i < grid_mission.n_agents; i++) {
                     GridNode grid_node(plan.get(t, i)->pos.x,
                                        plan.get(t, i)->pos.y,
-                                       0);
+                                       plan.get(t, i)->pos.z);
                     grid_paths[i].emplace_back(grid_node);
                 }
             }
@@ -354,7 +354,7 @@ namespace DynamicPlanning {
 
         // Delete repeated path to prevent deadlock
         size_t repeated_interval = 0;
-        for(size_t i = 1; i < grid_paths[0].size(); i++) {
+        for (size_t i = 1; i < grid_paths[0].size(); i++) {
             bool repeated = true;
             for (const auto &grid_path: grid_paths) {
                 if (grid_path[0] != grid_path[i]) {
@@ -366,8 +366,8 @@ namespace DynamicPlanning {
                 repeated_interval = i;
             }
         }
-        for(size_t ri = 0; ri < repeated_interval; ri++){
-            for(size_t i = 0; i < grid_mission.n_agents; i++){
+        for (size_t ri = 0; ri < repeated_interval; ri++) {
+            for (size_t i = 0; i < grid_mission.n_agents; i++) {
                 grid_paths[i].erase(grid_paths[i].begin());
             }
         }

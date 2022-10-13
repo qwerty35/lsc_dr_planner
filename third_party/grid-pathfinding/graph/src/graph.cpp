@@ -299,119 +299,129 @@ Nodes Graph::getV() const
   return _V;
 }
 
-Grid::Grid(const std::string& _map_file) : Graph(), map_file(_map_file)
-{
-  // read map file
-#ifdef _MAPDIR_
-  std::ifstream file(_MAPDIR_ + map_file);
-#else
-  std::ifstream file(map_file);
-#endif
+//Grid::Grid(const std::string& _map_file) : Graph(), map_file(_map_file)
+//{
+//  // read map file
+//#ifdef _MAPDIR_
+//  std::ifstream file(_MAPDIR_ + map_file);
+//#else
+//  std::ifstream file(map_file);
+//#endif
+//
+//  if (!file) halt("file " + map_file + " is not found.");
+//
+//  std::string line;
+//  std::smatch results;
+//  std::regex r_height = std::regex(R"(height\s(\d+))");
+//  std::regex r_width = std::regex(R"(width\s(\d+))");
+//  std::regex r_map = std::regex(R"(map)");
+//
+//  // fundamental graph params
+//  while (getline(file, line)) {
+//    // for CRLF coding
+//    if (*(line.end() - 1) == 0x0d) line.pop_back();
+//
+//    if (std::regex_match(line, results, r_height)) {
+//      height = std::stoi(results[1].str());
+//    }
+//    if (std::regex_match(line, results, r_width)) {
+//      width = std::stoi(results[1].str());
+//    }
+//    if (std::regex_match(line, results, r_map)) break;
+//  }
+//  if (!(width > 0 && height > 0)) halt("failed to load width/height.");
+//
+//  // create nodes
+//  int y = 0;
+//  V = Nodes(width * height, nullptr);
+//  while (getline(file, line)) {
+//    // for CRLF coding
+//    if (*(line.end() - 1) == 0x0d) line.pop_back();
+//
+//    if ((int)line.size() != width) halt("map format is invalid");
+//    for (int x = 0; x < width; ++x) {
+//      char s = line[x];
+//      if (s == 'T' or s == '@') continue;  // object
+//      int id = width * y + x;
+//      Node* v = new Node(id, x, y, z);
+//      V[id] = v;
+//    }
+//    ++y;
+//  }
+//  if (y != height) halt("map format is invalid");
+//  file.close();
+//
+//  // create edges
+//  for (int y = 0; y < height; ++y) {
+//    for (int x = 0; x < width; ++x) {
+//      if (!existNode(x, y)) continue;
+//      Node* v = getNode(x, y);
+//      // left
+//      if (existNode(x - 1, y)) v->neighbor.push_back(getNode(x - 1, y));
+//      // right
+//      if (existNode(x + 1, y)) v->neighbor.push_back(getNode(x + 1, y));
+//      // up
+//      if (existNode(x, y - 1)) v->neighbor.push_back(getNode(x, y - 1));
+//      // down
+//      if (existNode(x, y + 1)) v->neighbor.push_back(getNode(x, y + 1));
+//    }
+//  }
+//}
 
-  if (!file) halt("file " + map_file + " is not found.");
-
-  std::string line;
-  std::smatch results;
-  std::regex r_height = std::regex(R"(height\s(\d+))");
-  std::regex r_width = std::regex(R"(width\s(\d+))");
-  std::regex r_map = std::regex(R"(map)");
-
-  // fundamental graph params
-  while (getline(file, line)) {
-    // for CRLF coding
-    if (*(line.end() - 1) == 0x0d) line.pop_back();
-
-    if (std::regex_match(line, results, r_height)) {
-      height = std::stoi(results[1].str());
-    }
-    if (std::regex_match(line, results, r_width)) {
-      width = std::stoi(results[1].str());
-    }
-    if (std::regex_match(line, results, r_map)) break;
-  }
-  if (!(width > 0 && height > 0)) halt("failed to load width/height.");
-
-  // create nodes
-  int y = 0;
-  V = Nodes(width * height, nullptr);
-  while (getline(file, line)) {
-    // for CRLF coding
-    if (*(line.end() - 1) == 0x0d) line.pop_back();
-
-    if ((int)line.size() != width) halt("map format is invalid");
-    for (int x = 0; x < width; ++x) {
-      char s = line[x];
-      if (s == 'T' or s == '@') continue;  // object
-      int id = width * y + x;
-      Node* v = new Node(id, x, y);
-      V[id] = v;
-    }
-    ++y;
-  }
-  if (y != height) halt("map format is invalid");
-  file.close();
-
-  // create edges
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      if (!existNode(x, y)) continue;
-      Node* v = getNode(x, y);
-      // left
-      if (existNode(x - 1, y)) v->neighbor.push_back(getNode(x - 1, y));
-      // right
-      if (existNode(x + 1, y)) v->neighbor.push_back(getNode(x + 1, y));
-      // up
-      if (existNode(x, y - 1)) v->neighbor.push_back(getNode(x, y - 1));
-      // down
-      if (existNode(x, y + 1)) v->neighbor.push_back(getNode(x, y + 1));
-    }
-  }
-}
-
-Grid::Grid(const std::vector<std::vector<std::vector<int>>>& grid) : Graph()
-{
+Grid::Grid(const std::vector<std::vector<std::vector<int>>>& grid) : Graph() {
     width = grid.size();
-    height = grid[0].size();
+    depth = grid[0].size();
+    height = grid[0][0].size();
 
     // create nodes
-    V = Nodes(width * height, nullptr);
-    for(int x = 0; x < width; x++){
-        for(int y = 0; y < height; y++){
-            if(grid[x][y][0] == 1) continue;  // object
-            int id = width * y + x;
-            Node* v = new Node(id, x, y);
-            V[id] = v;
+    V = Nodes(width * depth * height, nullptr);
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < depth; y++) {
+            for (int z = 0; z < height; z++) {
+                if (grid[x][y][z] == 1) continue;
+                int id = width * depth * z + width * y + x;
+                Node *v = new Node(id, x, y, z);
+                V[id] = v;
+            }
         }
     }
 
     // create edges
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (!existNode(x, y)) continue;
-            Node* v = getNode(x, y);
-            // left
-            if (existNode(x - 1, y)) v->neighbor.push_back(getNode(x - 1, y));
-            // right
-            if (existNode(x + 1, y)) v->neighbor.push_back(getNode(x + 1, y));
-            // up
-            if (existNode(x, y - 1)) v->neighbor.push_back(getNode(x, y - 1));
-            // down
-            if (existNode(x, y + 1)) v->neighbor.push_back(getNode(x, y + 1));
+    for (int z = 0; z < height; ++z) {
+        for (int y = 0; y < depth; ++y) {
+            for (int x = 0; x < width; ++x) {
+                if (!existNode(x, y, z)) continue;
+                Node *v = getNode(x, y, z);
+                // left
+                if (existNode(x - 1, y, z)) v->neighbor.push_back(getNode(x - 1, y, z));
+                // right
+                if (existNode(x + 1, y, z)) v->neighbor.push_back(getNode(x + 1, y, z));
+                // up
+                if (existNode(x, y - 1, z)) v->neighbor.push_back(getNode(x, y - 1, z));
+                // down
+                if (existNode(x, y + 1, z)) v->neighbor.push_back(getNode(x, y + 1, z));
+                // top
+                if (existNode(x, y, z - 1)) v->neighbor.push_back(getNode(x, y, z - 1));
+                // bottom
+                if (existNode(x, y, z + 1)) v->neighbor.push_back(getNode(x, y, z + 1));
+            }
         }
     }
 }
 
 bool Grid::existNode(int id) const
 {
-  return 0 <= id && id < width * height && V[id] != nullptr;
+  return 0 <= id && id < width * depth * height && V[id] != nullptr;
 }
 
-bool Grid::existNode(int x, int y) const
+bool Grid::existNode(int x, int y, int z) const
 {
-  return 0 <= x && x < width && 0 <= y && y < height &&
-         existNode(y * width + x);
+  return 0 <= x && x < width &&
+         0 <= y && y < depth &&
+         0 <= z && z < height &&
+         existNode(z * width * depth + y * width + x);
 }
 
 Node* Grid::getNode(int id) const { return V[id]; }
 
-Node* Grid::getNode(int x, int y) const { return getNode(y * width + x); }
+Node* Grid::getNode(int x, int y, int z) const { return getNode(z * width * depth + y * width + x); }
