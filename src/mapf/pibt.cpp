@@ -177,8 +177,12 @@ namespace MAPF {
             } else {
                 int c_v = pathDist(a->id, v);
                 int c_u = pathDist(a->id, u);
-                if ((c_u < c_v) || (c_u == c_v && occupied_now[v->id] != nullptr &&
-                                    occupied_now[u->id] == nullptr)) {
+                float d_v = a->g->pos.euclideanDist(v->pos); // Euclidean distance to goal
+                float d_u = a->g->pos.euclideanDist(u->pos); // Euclidean distance to goal
+
+                if ((c_u < c_v)
+                    || (c_u == c_v && occupied_now[v->id] != nullptr && occupied_now[u->id] == nullptr)
+                    || (c_u == c_v && occupied_now[v->id] == nullptr && occupied_now[u->id] == nullptr && d_u < d_v)) {
                     v = u;
                 }
             }

@@ -698,10 +698,6 @@ namespace DynamicPlanning {
                     normal_vector.z() = normal_vector.z() / downwash;
                     obs_control_point.z() = obs_control_point.z() * downwash;
 
-                    if(obs_control_point.z() > 1.4){
-                        ROS_INFO("asdf");
-                    }
-
                     constraints.setLSC(oi, m, obs_control_point, normal_vector, d);
                 }
             }
