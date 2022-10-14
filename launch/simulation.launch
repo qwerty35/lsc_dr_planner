@@ -53,7 +53,7 @@
     <!-- World -->
     <param name="world/frame_id" value="$(arg world_frame_id)" /> <!-- world frame id used in Rviz -->
     <param name="world/file_name" value="$(arg world_file_name)" /> <!-- world frame id used in Rviz -->
-    <param name="world/dimension" value="2" /> <!-- 2: 2D simulation, 3: 3D simulation -->
+    <param name="world/dimension" value="3" /> <!-- 2: 2D simulation, 3: 3D simulation -->
     <param name="world/use_octomap" value="$(arg use_octomap)" />
     <param name="world/use_global_map" value="$(arg world_use_global_map)" />
     <param name="world/resolution" value="$(arg world_resolution)" /> <!-- Octomap resolution -->

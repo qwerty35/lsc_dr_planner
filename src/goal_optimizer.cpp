@@ -143,6 +143,10 @@ namespace DynamicPlanning {
             }
         }
 
+        if(not constraints.getSFC(param.M - 1).isPointInBox(current_goal_point)){
+            ROS_ERROR("SFC????");
+        }
+
         // LSC or BVC
         for (size_t oi = 0; oi < N_obs; oi++) {
             LSC lsc = constraints.getLSC(oi, param.M - 1, param.n);
@@ -159,6 +163,10 @@ namespace DynamicPlanning {
 
             c.add(expr >= 0);
             expr.end();
+
+            if(lsc.normal_vector.dot(current_goal_point - lsc.obs_control_point) - lsc.d < 0){
+                ROS_ERROR("LSC????");
+            }
         }
 
         model.add(c);

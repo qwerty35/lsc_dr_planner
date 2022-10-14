@@ -206,8 +206,7 @@ namespace DynamicPlanning {
                 // Run grid_based_planner
                 bool success = grid_based_planner->planMAPF(start_points, current_points, goal_points,
                                                             agents[0]->getDistmap(),
-                                                            mission.agents[0].radius,
-                                                            mission.agents[0].downwash);
+                                                            mission.agents[0].radius); //TODO: hetero radius
                 if (success) {
                     std::vector<point3d> desired_waypoints;
                     desired_waypoints.resize(group_size);

@@ -662,14 +662,10 @@ namespace DynamicPlanning {
 
             // Coordinate transformation
             double downwash = downwashBetween(oi);
-            traj_t initial_traj_trans, obs_pred_traj_trans;
-            if(param.world_dimension == 2){
-                initial_traj_trans = initial_traj;
-                obs_pred_traj_trans = obs_pred_trajs[oi];
-            } else {
-                initial_traj_trans = initial_traj.coordinateTransform(downwash);
-                obs_pred_traj_trans = obs_pred_trajs[oi].coordinateTransform(downwash);
-            }
+            traj_t initial_traj_trans = initial_traj.coordinateTransform(downwash);
+            traj_t obs_pred_traj_trans = obs_pred_trajs[oi].coordinateTransform(downwash);
+            point3d obs_goal_trans = coordinateTransform(obstacles[oi].goal_point, downwash);
+            point3d agent_goal_trans = coordinateTransform(agent.current_goal_point, downwash);
 
             // Normal vector planning
             // Compute normal vector of LSC
@@ -689,17 +685,24 @@ namespace DynamicPlanning {
                     normal_vector.z() = normal_vector.z() / downwash;
                     constraints.setLSC(oi, m, obs_pred_trajs[oi][m].control_points, normal_vector, d);
                 } else {
-                    Line line1(obs_pred_traj_trans.lastPoint(), obstacles[oi].goal_point);
-                    Line line2(initial_traj_trans.lastPoint(), agent.current_goal_point);
+                    Line line1(obs_pred_traj_trans.lastPoint(), obs_goal_trans);
+                    Line line2(initial_traj_trans.lastPoint(), agent_goal_trans);
                     ClosestPoints closest_points = closestPointsBetweenLineSegments(line1, line2);
                     point3d normal_vector = (closest_points.closest_point2 - closest_points.closest_point1).normalized();
+                    point3d obs_control_point = closest_points.closest_point1;
 
                     // Compute safety margin
                     double d = 0.5 * (collision_dist + closest_points.dist);
 
                     // Return to original coordination
                     normal_vector.z() = normal_vector.z() / downwash;
-                    constraints.setLSC(oi, m, closest_points.closest_point1, normal_vector, d);
+                    obs_control_point.z() = obs_control_point.z() * downwash;
+
+                    if(obs_control_point.z() > 1.4){
+                        ROS_INFO("asdf");
+                    }
+
+                    constraints.setLSC(oi, m, obs_control_point, normal_vector, d);
                 }
             }
         }

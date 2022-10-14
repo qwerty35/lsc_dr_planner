@@ -55,6 +55,7 @@ namespace DynamicPlanning {
     GridBasedPlanner::GridBasedPlanner(const DynamicPlanning::Param &_param,
                                        const DynamicPlanning::Mission &_mission)
             : param(_param), mission(_mission) {
+        grid_info.agent_downwash = mission.agents[0].downwash;
         updateGridInfo();
     }
 
@@ -63,7 +64,7 @@ namespace DynamicPlanning {
                                     const std::vector<Obstacle> &obstacles,
                                     const std::set<int> &grid_obstacles) {
         distmap_ptr = _distmap_ptr;
-        updateGridMap(agent.radius, agent.downwash, obstacles, grid_obstacles);
+        updateGridMap(agent.radius, obstacles, grid_obstacles);
         updateGridMission(agent.current_state.position, agent.desired_goal_point);
 
         bool success = planImpl(false);
@@ -74,9 +75,10 @@ namespace DynamicPlanning {
                                     const points_t &current_points,
                                     const points_t &goal_points,
                                     const std::shared_ptr<DynamicEDTOctomap> &_distmap_ptr,
-                                    double agent_radius, double agent_downwash) {
+                                    double agent_radius) {
         distmap_ptr = _distmap_ptr;
-        updateGridMap(agent_radius, agent_downwash);
+        updateGridInfo();
+        updateGridMap(agent_radius);
         updateGridMission(start_points, current_points, goal_points);
 
         bool success = planImpl(true);
@@ -84,8 +86,8 @@ namespace DynamicPlanning {
     }
 
     void GridBasedPlanner::updateGridInfo() {
-        double grid_resolution = param.grid_resolution;
         for (int i = 0; i < 3; i++) {
+            double grid_resolution = getGridResolution(i);
             grid_info.grid_min[i] = -floor((-mission.world_min(i) + SP_EPSILON) / grid_resolution) * grid_resolution;
             grid_info.grid_max[i] = floor((mission.world_max(i) + SP_EPSILON) / grid_resolution) * grid_resolution;
         }
@@ -95,12 +97,12 @@ namespace DynamicPlanning {
         }
 
         for (int i = 0; i < 3; i++) {
+            double grid_resolution = getGridResolution(i);
             grid_info.dim[i] = (int) round((grid_info.grid_max[i] - grid_info.grid_min[i]) / grid_resolution) + 1;
         }
     }
 
     void GridBasedPlanner::updateGridMap(double agent_radius,
-                                         double agent_downwash,
                                          const std::vector<Obstacle> &obstacles,
                                          const std::set<int> &grid_obstacles) {
         // Initialize gridmap
@@ -132,71 +134,6 @@ namespace DynamicPlanning {
                         double dist_to_obs = LInfinityDistance(search_point, closest_point);
                         if (dist_to_obs < agent_radius - SP_EPSILON_FLOAT) {
                             grid_map.grid[i][j][k] = GP_OCCUPIED;
-                        }
-                    }
-                }
-            }
-        }
-
-
-        double grid_resolution = param.grid_resolution;
-        for (int oi: grid_obstacles) {
-            std::vector<point3d> grid_obstacle_positions;
-            if (obstacles[oi].type == ObstacleType::AGENT) {
-                grid_obstacle_positions.emplace_back(obstacles[oi].position);
-            } else {
-                double sample_dt = 0.1;
-                size_t total_sample = floor(param.obs_uncertainty_horizon / sample_dt) + 1;
-                for (size_t i = 0; i < total_sample; i++) {
-                    point3d obs_position = obstacles[oi].position + obstacles[oi].velocity * i * sample_dt;
-                    grid_obstacle_positions.emplace_back(obs_position);
-                }
-            }
-
-            for (const auto &obs_position: grid_obstacle_positions) {
-                int obs_i, obs_j, obs_k = 0;
-                // Update higher priority agent as an obstacle to gridmap
-                obs_i = (int) round(
-                        (obs_position.x() - grid_info.grid_min[0] + SP_EPSILON) / grid_resolution);
-                obs_j = (int) round(
-                        (obs_position.y() - grid_info.grid_min[1] + SP_EPSILON) / grid_resolution);
-                if (param.world_dimension != 2) {
-                    obs_k = (int) round(
-                            (obs_position.z() - grid_info.grid_min[2] + SP_EPSILON) / grid_resolution);
-                }
-
-                double obstacle_radius, downwash, dist;
-                if (obstacles[oi].type == ObstacleType::AGENT) {
-                    obstacle_radius = obstacles[oi].radius;
-                    downwash = (agent_radius * agent_downwash + obstacles[oi].radius * obstacles[oi].downwash) /
-                               (agent_radius + obstacles[oi].radius);
-                } else {
-                    obstacle_radius = obstacles[oi].radius +
-                                      0.5 * obstacles[oi].max_acc * param.obs_uncertainty_horizon *
-                                      param.obs_uncertainty_horizon;
-                    // obstacle_radius = obstacles[oi].radius;
-                    downwash = (agent_radius + obstacles[oi].radius * obstacles[oi].downwash) /
-                               (agent_radius + obstacles[oi].radius);
-                }
-
-                int size_xy, size_z;
-                size_xy = ceil((agent_radius + obstacle_radius) / grid_resolution);
-                size_z = ceil((agent_radius * agent_downwash + obstacles[oi].radius * obstacles[oi].downwash) /
-                              grid_resolution);
-
-                for (int i = std::max(obs_i - size_xy, 0);
-                     i <= std::min(obs_i + size_xy, grid_info.dim[0] - 1); i++) {
-                    for (int j = std::max(obs_j - size_xy, 0);
-                         j <= std::min(obs_j + size_xy, grid_info.dim[1] - 1); j++) {
-                        for (int k = std::max(obs_k - size_z, 0);
-                             k <= std::min(obs_k + size_z, grid_info.dim[2] - 1); k++) {
-                            if (grid_map.grid[i][j][k] != GP_OCCUPIED) {
-                                point3d point = gridNodeToPoint3D(GridNode(i, j, k));
-                                dist = ellipsoidalDistance(point, obs_position, downwash);
-                                if (dist < agent_radius + obstacle_radius) {
-                                    grid_map.grid[i][j][k] = GP_OCCUPIED;
-                                }
-                            }
                         }
                     }
                 }
@@ -384,34 +321,17 @@ namespace DynamicPlanning {
     }
 
     point3d GridBasedPlanner::gridNodeToPoint3D(const GridNode &grid_vector) const {
-        double grid_resolution = param.grid_resolution;
         if(param.world_dimension == 3){
-            return point3d(grid_info.grid_min[0] + grid_vector[0] * grid_resolution,
-                           grid_info.grid_min[1] + grid_vector[1] * grid_resolution,
-                           grid_info.grid_min[2] + grid_vector[2] * grid_resolution);
+            return point3d(grid_info.grid_min[0] + grid_vector[0] * param.grid_resolution,
+                           grid_info.grid_min[1] + grid_vector[1] * param.grid_resolution,
+                           grid_info.grid_min[2] + grid_vector[2] * param.grid_resolution * grid_info.agent_downwash);
         }
         else{
-            return point3d(grid_info.grid_min[0] + grid_vector[0] * grid_resolution,
-                           grid_info.grid_min[1] + grid_vector[1] * grid_resolution,
+            return point3d(grid_info.grid_min[0] + grid_vector[0] * param.grid_resolution,
+                           grid_info.grid_min[1] + grid_vector[1] * param.grid_resolution,
                            param.world_z_2d);
         }
 
-    }
-
-    point3d GridBasedPlanner::gridNodeToPoint3D(const GridNode &grid_vector, int dimension) const {
-        double grid_resolution = param.grid_resolution;
-        point3d point;
-        if (dimension == 2) {
-            point = point3d(grid_info.grid_min[0] + grid_vector[0] * grid_resolution,
-                            grid_info.grid_min[1] + grid_vector[1] * grid_resolution,
-                            param.world_z_2d);
-        } else {
-            point = point3d(grid_info.grid_min[0] + grid_vector[0] * grid_resolution,
-                            grid_info.grid_min[1] + grid_vector[1] * grid_resolution,
-                            grid_info.grid_min[2] + grid_vector[2] * grid_resolution);
-        }
-
-        return point;
     }
 
     std::vector<std::array<int, 3>> GridBasedPlanner::gridNodesToArrays(const GridNodes &grid_nodes) const {
@@ -429,10 +349,13 @@ namespace DynamicPlanning {
     GridNode GridBasedPlanner::point3DToGridVector(const point3d &point) const {
         GridNode grid_vector;
         for (int i = 0; i < 3; i++) {
-            grid_vector[i] = (int) round((point(i) - grid_info.grid_min[i]) / param.grid_resolution);
+            double grid_resolution = getGridResolution(i);
+            grid_vector[i] = (int) round((point(i) - grid_info.grid_min[i]) / grid_resolution);
+
+            // clamping
             if (grid_vector[i] < 0) {
                 grid_vector[i] = 0;
-            } else if (grid_vector[i] > grid_info.dim[i] - 1) {
+            } else if (grid_vector[i] >= grid_info.dim[i]) {
                 grid_vector[i] = grid_info.dim[i] - 1;
             }
         }
@@ -442,22 +365,6 @@ namespace DynamicPlanning {
 
     points_t GridBasedPlanner::getPath(size_t i) const {
         return plan_result.paths[i];
-    }
-
-    points_t GridBasedPlanner::getFreePoints() const {
-        //TODO: too naive, save them when generate map?
-        points_t free_points;
-        for (int i = 0; i < grid_info.dim[0]; i++) {
-            for (int j = 0; j < grid_info.dim[1]; j++) {
-                for (int k = 0; k < grid_info.dim[2]; k++) {
-                    if (grid_map.grid[i][j][k] == GP_EMPTY) {
-                        free_points.emplace_back(gridNodeToPoint3D(GridNode(i, j, k)));
-                    }
-                }
-            }
-        }
-
-        return free_points;
     }
 
     points_t GridBasedPlanner::getOccupiedPoints() const {
@@ -564,6 +471,14 @@ namespace DynamicPlanning {
         }
 
         return los_free_goal;
+    }
+
+    double GridBasedPlanner::getGridResolution(int i) const {
+        if(i < 2) {
+            return param.grid_resolution;
+        } else {
+            return param.grid_resolution * grid_info.agent_downwash;
+        }
     }
 
     bool GridBasedPlanner::castRay(const point3d &current_position,

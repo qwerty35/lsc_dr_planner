@@ -151,7 +151,6 @@ namespace DynamicPlanning {
         return index;
     }
 
-
     static double ellipsoidalDistance(const point3d& p1, const point3d& p2, double downwash){
         point3d delta = p1 - p2;
         delta.z() = delta.z() / downwash;

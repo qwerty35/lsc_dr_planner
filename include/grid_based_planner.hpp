@@ -67,6 +67,7 @@ namespace DynamicPlanning {
         std::array<double, 3> grid_min;
         std::array<double, 3> grid_max;
         std::array<int, 3> dim;
+        double agent_downwash;
     };
 
     struct GridMap {
@@ -98,7 +99,8 @@ namespace DynamicPlanning {
 
     class GridBasedPlanner {
     public:
-        GridBasedPlanner(const DynamicPlanning::Param &param, const DynamicPlanning::Mission &mission);
+        GridBasedPlanner(const DynamicPlanning::Param &param,
+                         const DynamicPlanning::Mission &mission);
 
         // single agent path planning
         bool planSAPF(const Agent &agent,
@@ -111,12 +113,10 @@ namespace DynamicPlanning {
                       const points_t &current_points,
                       const points_t &goal_points,
                       const std::shared_ptr<DynamicEDTOctomap> &_distmap_ptr,
-                      double agent_radius, double agent_downwash);
+                      double agent_radius);
 
         // Getter
         [[nodiscard]] points_t getPath(size_t i) const;
-
-        [[nodiscard]] points_t getFreePoints() const;
 
         [[nodiscard]] points_t getOccupiedPoints() const;
 
@@ -144,7 +144,6 @@ namespace DynamicPlanning {
         void updateGridInfo();
 
         void updateGridMap(double agent_radius,
-                           double agent_downwash,
                            const std::vector<Obstacle> &obstacles = {},
                            const std::set<int> &grid_obstacles = {});
 
@@ -167,11 +166,11 @@ namespace DynamicPlanning {
 
         [[nodiscard]]point3d gridNodeToPoint3D(const GridNode &grid_node) const;
 
-        [[nodiscard]] point3d gridNodeToPoint3D(const GridNode &grid_node, int dimension) const;
-
         [[nodiscard]] std::vector<std::array<int, 3>> gridNodesToArrays(const GridNodes &grid_nodes) const;
 
         [[nodiscard]] GridNode point3DToGridVector(const point3d &point) const;
+
+        double getGridResolution(int i) const;
 
         bool castRay(const point3d &current_position, const point3d &goal_position, double agent_radius);
     };
