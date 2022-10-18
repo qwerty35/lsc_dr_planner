@@ -106,6 +106,9 @@ namespace DynamicPlanning {
                 doStep();
             }
 
+            // Waypoint planning
+            decentralizedMAPP();
+
             // Update and broadcast agent and obstacle state
             broadcastMsgs();
 
@@ -154,7 +157,7 @@ namespace DynamicPlanning {
         }
     }
 
-    void MultiSyncSimulator::broadcastMsgs() {
+    void MultiSyncSimulator::decentralizedMAPP() {
         if(param.goal_mode == GoalMode::GRIDBASEDPLANNER) {
             // Ad-hoc network configuration
             groups.clear();
@@ -297,7 +300,9 @@ namespace DynamicPlanning {
                 planning_time.mapf_time.update((mapf_end_time - mapf_start_time).toSec());
             }
         }
+    }
 
+    void MultiSyncSimulator::broadcastMsgs() {
         // Update obstacle's states for each agent
         for (size_t qi = 0; qi < mission.qn; qi++) {
             std::vector<Obstacle> msg_obstacles;

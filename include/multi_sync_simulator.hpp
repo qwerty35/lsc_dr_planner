@@ -86,6 +86,8 @@ namespace DynamicPlanning {
 
         void doStep();
 
+        void decentralizedMAPP();
+
         void broadcastMsgs();
 
         void summarizeResult();
