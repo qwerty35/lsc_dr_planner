@@ -355,9 +355,47 @@ namespace DynamicPlanning {
         return edges;
     }
 
+    points_t Box::getSurfacePoints(double resolution) const {
+        points_t surface_points;
+
+        std::array<int, 3> max_iter = {0, 0, 0};
+        for (int i = 0; i < 3; i++) {
+            max_iter[i] =
+                    (int) floor((box_max(i) - box_min(i) + SP_EPSILON_FLOAT) / resolution) + 1;
+        }
+
+        std::array<size_t, 3> iter = {0, 0, 0};
+        for (iter[0] = 0; iter[0] < max_iter[0]; iter[0]++) {
+            for (iter[1] = 0; iter[1] < max_iter[1]; iter[1]++) {
+                for (iter[2] = 0; iter[2] < max_iter[2]; iter[2]++) {
+                    // Skip non-surface points
+                    if (iter[0] > 0 && iter[0] < max_iter[0] - 1 &&
+                        iter[1] > 0 && iter[1] < max_iter[1] - 1 &&
+                        iter[2] > 0 && iter[2] < max_iter[2] - 1) {
+                        continue;
+                    }
+
+                    point3d surface_point;
+                    for (int i = 0; i < 3; i++) {
+                        surface_point(i) = box_min(i) + iter[i] * resolution;
+                    }
+
+                    surface_points.emplace_back(surface_point);
+                }
+            }
+        }
+
+        return surface_points;
+    }
+
     bool Box::operator==(Box &other_sfc) const {
         return box_min.distance(other_sfc.box_min) < SP_EPSILON_FLOAT and
                box_max.distance(other_sfc.box_max) < SP_EPSILON_FLOAT;
+    }
+
+    bool Box::operator!=(Box &other_sfc) const {
+        return box_min.distance(other_sfc.box_min) > SP_EPSILON_FLOAT and
+               box_max.distance(other_sfc.box_max) > SP_EPSILON_FLOAT;
     }
 
     CollisionConstraints::CollisionConstraints(const Param &param_, const Mission &mission_)
@@ -366,19 +404,19 @@ namespace DynamicPlanning {
     void CollisionConstraints::initializeSFC(const point3d &agent_position, double agent_radius) {
         sfcs.resize(param.M);
 
-        Box initial_sfc, expanded_sfc;
+        Box sfc_initial, sfc_expand;
         for (size_t k = 0; k < 3; k++) {
-            initial_sfc.box_min(k) = floor(agent_position(k) / param.world_resolution) * param.world_resolution;
-            initial_sfc.box_max(k) = ceil(agent_position(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_min(k) = floor(agent_position(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_max(k) = ceil(agent_position(k) / param.world_resolution) * param.world_resolution;
         }
 
-        bool success = expandSFC(initial_sfc, agent_radius, expanded_sfc);
+        bool success = expandSFCIncrementally(sfc_initial, agent_radius, sfc_expand);
         if (not success) {
             throw std::invalid_argument("[CollisionConstraints] Invalid initial SFC");
         }
 
         for (int m = 0; m < param.M; m++) {
-            sfcs[m] = expanded_sfc;
+            sfcs[m] = sfc_expand;
         }
     }
 
@@ -422,6 +460,44 @@ namespace DynamicPlanning {
         Box sfc_update;
         points_t convex_hull_greedy = convex_hull;
         convex_hull_greedy.emplace_back(next_waypoint);
+        bool success = expandSFCFromConvexHull(convex_hull_greedy, agent_radius, sfc_update);
+        if (not success) {
+            success = expandSFCFromConvexHull(convex_hull, sfcs[param.M - 1],
+                                              agent_radius, sfc_update);
+            if (not success) {
+                ROS_WARN("[CollisionConstraints] Cannot find proper SFC, use previous one");
+                sfc_update = sfcs[param.M - 1]; // Reuse previous one
+            }
+        }
+
+        sfcs[param.M - 1] = sfc_update;
+    }
+
+    void CollisionConstraints::constructSFCFromInitialTraj(const traj_t &initial_traj,
+                                                           const point3d &current_goal_point,
+                                                           const point3d &next_waypoint,
+                                                           double agent_radius) {
+        // Update sfc for segments m < M-1 from previous sfc
+        for (int m = 0; m < param.M - 1; m++) {
+            sfcs[m] = sfcs[m + 1];
+        }
+
+        // Minor refinement
+        for(int m = 0; m < param.M - 2; m++) {
+            points_t control_points = initial_traj[m].control_points;
+            if(sfcs[m + 1].isSuperSetOfConvexHull(control_points)){
+                sfcs[m] = sfcs[m + 1];
+            }
+        }
+
+        points_t convex_hull;
+        convex_hull.emplace_back(initial_traj.lastPoint());
+        convex_hull.emplace_back(current_goal_point);
+
+        points_t convex_hull_greedy = convex_hull;
+        convex_hull_greedy.emplace_back(next_waypoint);
+
+        Box sfc_update;
         bool success = expandSFCFromConvexHull(convex_hull_greedy, agent_radius, sfc_update);
         if (not success) {
             success = expandSFCFromConvexHull(convex_hull, sfcs[param.M - 1],
@@ -667,28 +743,28 @@ namespace DynamicPlanning {
     }
 
     bool CollisionConstraints::expandSFCFromPoint(const point3d &point, const point3d &goal_point,
-                                                  const Box &prev_sfc, double agent_radius,
-                                                  Box &expanded_sfc) {
+                                                  const Box &sfc_prev, double agent_radius,
+                                                  Box &sfc_expand) {
         // Initialize initial_box
-        Box initial_sfc;
+        Box sfc_initial;
         for (size_t k = 0; k < 3; k++) {
-            initial_sfc.box_min(k) = floor(point(k) / param.world_resolution) * param.world_resolution;
-            initial_sfc.box_max(k) = ceil(point(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_min(k) = floor(point(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_max(k) = ceil(point(k) / param.world_resolution) * param.world_resolution;
         }
-        if (not prev_sfc.include(initial_sfc)) {
-            initial_sfc = prev_sfc.intersection(initial_sfc);
+        if (not sfc_prev.include(sfc_initial)) {
+            sfc_initial = sfc_prev.intersection(sfc_initial);
             for (size_t k = 0; k < 3; k++) {
-                initial_sfc.box_min(k) = ceil((initial_sfc.box_min(k) - SP_EPSILON_FLOAT) / param.world_resolution) *
+                sfc_initial.box_min(k) = ceil((sfc_initial.box_min(k) - SP_EPSILON_FLOAT) / param.world_resolution) *
                                          param.world_resolution;
-                initial_sfc.box_max(k) = floor((initial_sfc.box_max(k) + SP_EPSILON_FLOAT) / param.world_resolution) *
+                sfc_initial.box_max(k) = floor((sfc_initial.box_max(k) + SP_EPSILON_FLOAT) / param.world_resolution) *
                                          param.world_resolution;
             }
         }
 
-        bool success = expandSFC(initial_sfc, goal_point, agent_radius, expanded_sfc);
-        if (not success or not expanded_sfc.isPointInBox(point)) {
+        bool success = expandSFC(sfc_initial, goal_point, agent_radius, sfc_expand);
+        if (not success or not sfc_expand.isPointInBox(point)) {
             ROS_ERROR("????");
-//            success = expandSFC(initial_sfc, expanded_sfc, agent_radius);
+//            success = expandSFC(sfc_initial, sfc_expand, agent_radius);
         }
 
         return success;
@@ -696,34 +772,34 @@ namespace DynamicPlanning {
 
     bool CollisionConstraints::expandSFCFromConvexHull(const points_t &convex_hull,
                                                        double agent_radius,
-                                                       Box &expanded_sfc) {
+                                                       Box &sfc_expand) {
         if (convex_hull.empty()) {
             return false;
         }
 
         // Initialize initial_box
-        Box initial_sfc;
-        initial_sfc.box_min = convex_hull[0];
-        initial_sfc.box_max = convex_hull[0];
+        Box sfc_initial;
+        sfc_initial.box_min = convex_hull[0];
+        sfc_initial.box_max = convex_hull[0];
         for (const auto &point: convex_hull) {
             for (int k = 0; k < 3; k++) {
-                if (point(k) < initial_sfc.box_min(k)) {
-                    initial_sfc.box_min(k) = point(k);
+                if (point(k) < sfc_initial.box_min(k)) {
+                    sfc_initial.box_min(k) = point(k);
                 }
-                if (point(k) > initial_sfc.box_max(k)) {
-                    initial_sfc.box_max(k) = point(k);
+                if (point(k) > sfc_initial.box_max(k)) {
+                    sfc_initial.box_max(k) = point(k);
                 }
             }
         }
 
         // Align initial SFC to grid
         for (int k = 0; k < 3; k++) {
-            initial_sfc.box_min(k) = round(initial_sfc.box_min(k) / param.world_resolution) * param.world_resolution;
-            initial_sfc.box_max(k) = round(initial_sfc.box_max(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_min(k) = round(sfc_initial.box_min(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_max(k) = round(sfc_initial.box_max(k) / param.world_resolution) * param.world_resolution;
         }
 
-        bool success = expandSFC(initial_sfc, agent_radius, expanded_sfc);
-        if (success and not expanded_sfc.isSuperSetOfConvexHull(convex_hull)) {
+        bool success = expandSFCIncrementally(sfc_initial, agent_radius, sfc_expand);
+        if (success and not sfc_expand.isSuperSetOfConvexHull(convex_hull)) {
             success = false;
         }
 
@@ -731,45 +807,45 @@ namespace DynamicPlanning {
     }
 
     bool CollisionConstraints::expandSFCFromConvexHull(const points_t &convex_hull,
-                                                       const Box &prev_sfc,
+                                                       const Box &sfc_prev,
                                                        double agent_radius,
-                                                       Box &expanded_sfc) {
+                                                       Box &sfc_expand) {
         if (convex_hull.empty()) {
             return false;
         }
 
         // Initialize initial_box
-        Box initial_sfc;
-        initial_sfc.box_min = convex_hull[0];
-        initial_sfc.box_max = convex_hull[0];
+        Box sfc_initial;
+        sfc_initial.box_min = convex_hull[0];
+        sfc_initial.box_max = convex_hull[0];
         for (const auto &point: convex_hull) {
             for (int k = 0; k < 3; k++) {
-                if (point(k) < initial_sfc.box_min(k)) {
-                    initial_sfc.box_min(k) = point(k);
+                if (point(k) < sfc_initial.box_min(k)) {
+                    sfc_initial.box_min(k) = point(k);
                 }
-                if (point(k) > initial_sfc.box_max(k)) {
-                    initial_sfc.box_max(k) = point(k);
+                if (point(k) > sfc_initial.box_max(k)) {
+                    sfc_initial.box_max(k) = point(k);
                 }
             }
         }
 
         // Align initial SFC to grid
         for (int k = 0; k < 3; k++) {
-            initial_sfc.box_min(k) = floor(initial_sfc.box_min(k) / param.world_resolution) * param.world_resolution;
-            initial_sfc.box_max(k) = ceil(initial_sfc.box_max(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_min(k) = floor(sfc_initial.box_min(k) / param.world_resolution) * param.world_resolution;
+            sfc_initial.box_max(k) = ceil(sfc_initial.box_max(k) / param.world_resolution) * param.world_resolution;
         }
-        if (not prev_sfc.include(initial_sfc)) {
-            initial_sfc = prev_sfc.intersection(initial_sfc);
+        if (not sfc_prev.include(sfc_initial)) {
+            sfc_initial = sfc_prev.intersection(sfc_initial);
             for (size_t k = 0; k < 3; k++) {
-                initial_sfc.box_min(k) = ceil((initial_sfc.box_min(k) - SP_EPSILON_FLOAT) / param.world_resolution) *
+                sfc_initial.box_min(k) = ceil((sfc_initial.box_min(k) - SP_EPSILON_FLOAT) / param.world_resolution) *
                                          param.world_resolution;
-                initial_sfc.box_max(k) = floor((initial_sfc.box_max(k) + SP_EPSILON_FLOAT) / param.world_resolution) *
+                sfc_initial.box_max(k) = floor((sfc_initial.box_max(k) + SP_EPSILON_FLOAT) / param.world_resolution) *
                                          param.world_resolution;
             }
         }
 
-        bool success = expandSFC(initial_sfc, agent_radius, expanded_sfc);
-        if (not success or not expanded_sfc.isSuperSetOfConvexHull(convex_hull)) {
+        bool success = expandSFCIncrementally(sfc_initial, agent_radius, sfc_expand);
+        if (not success or not sfc_expand.isSuperSetOfConvexHull(convex_hull)) {
             ROS_ERROR("????");
         }
 
@@ -778,16 +854,16 @@ namespace DynamicPlanning {
 
     bool CollisionConstraints::isObstacleInSFC(const Box &sfc, double margin) {
         point3d delta(0.5 * param.world_resolution, 0.5 * param.world_resolution, 0.5 * param.world_resolution);
-        std::array<int, 3> sfc_size = {0, 0, 0};
+        std::array<int, 3> max_iter = {0, 0, 0};
         for (int i = 0; i < 3; i++) {
-            sfc_size[i] =
+            max_iter[i] =
                     (int) floor((sfc.box_max(i) - sfc.box_min(i) + SP_EPSILON_FLOAT) / param.world_resolution) + 1;
         }
 
         std::array<size_t, 3> iter = {0, 0, 0};
-        for (iter[0] = 0; iter[0] < sfc_size[0]; iter[0]++) {
-            for (iter[1] = 0; iter[1] < sfc_size[1]; iter[1]++) {
-                for (iter[2] = 0; iter[2] < sfc_size[2]; iter[2]++) {
+        for (iter[0] = 0; iter[0] < max_iter[0]; iter[0]++) {
+            for (iter[1] = 0; iter[1] < max_iter[1]; iter[1]++) {
+                for (iter[2] = 0; iter[2] < max_iter[2]; iter[2]++) {
                     float dist;
                     point3d search_point, closest_point;
                     for (int i = 0; i < 3; i++) {
@@ -817,8 +893,96 @@ namespace DynamicPlanning {
                sfc.box_max.z() < mission.world_max.z() - margin + SP_EPSILON_FLOAT;
     }
 
-    bool CollisionConstraints::expandSFC(const Box &initial_sfc, double margin, Box &expanded_sfc) {
-        if (isObstacleInSFC(initial_sfc, margin)) {
+    std::vector<Box> CollisionConstraints::findSurfaceBoxes(const Box &sfc) {
+        std::vector<Box> surface_boxes;
+
+        points_t surface_points = sfc.getSurfacePoints(param.world_resolution);
+        for (const auto& surface_point : surface_points) {
+            float dist;
+            point3d closest_point;
+            point3d delta(0.5 * param.world_resolution, 0.5 * param.world_resolution, 0.5 * param.world_resolution);
+            point3d unit_cubic(1, 1, 1);
+
+            distmap_ptr->getDistanceAndClosestObstacle(surface_point, dist, closest_point);
+            Box closest_cell(closest_point - delta, closest_point + delta);
+            closest_point = closest_cell.closestPoint(surface_point);
+            double dist_to_obs = LInfinityDistance(closest_point, surface_point);
+            double box_size =
+                    floor((dist_to_obs + SP_EPSILON_FLOAT) / param.world_resolution) * param.world_resolution;
+
+            surface_boxes.emplace_back(Box(surface_point - unit_cubic * box_size,
+                                           surface_point + unit_cubic * box_size));
+        }
+
+        return surface_boxes;
+    }
+
+    Box CollisionConstraints::unifySurfaceBoxes(const std::vector<Box> &surface_boxes){
+        Box union_box;
+
+        if(not surface_boxes.empty()){
+            union_box = surface_boxes.front();
+            for(const auto& surface_box : surface_boxes){
+                union_box = union_box.unify(surface_box);
+            }
+        }
+
+        return union_box;
+    }
+
+    Box CollisionConstraints::shrinkUnionBox(const Box &union_box,
+                                             const Box &sfc_initial,
+                                             const std::vector<Box> &surface_boxes){
+        Box shrink_box = union_box;
+
+        std::set<int> shrink_directions; // 1: +x 2: +y, 3: +z, -1: -x -2: -y, -3: -z
+        do {
+            shrink_directions.clear();
+            points_t surface_points = shrink_box.getSurfacePoints(param.world_resolution);
+
+            for (const auto &surface_point: surface_points) {
+                bool valid_point = false;
+                for (const auto &surface_box: surface_boxes) {
+                    if (surface_box.isPointInBox(surface_point)) {
+                        valid_point = true;
+                        break;
+                    }
+                }
+
+                if (not valid_point) {
+                    for(int i = 0; i < 3; i++){
+                        bool shrink_direction_found = true;
+                        if(surface_point(i) < shrink_box.box_min(i) + SP_EPSILON_FLOAT &&
+                           surface_point(i) < sfc_initial.box_min(i) - SP_EPSILON_FLOAT){
+                            shrink_directions.insert(-i-1);
+                        } else if(surface_point(i) > shrink_box.box_max(i) - SP_EPSILON_FLOAT &&
+                                  surface_point(i) > sfc_initial.box_max(i) + SP_EPSILON_FLOAT){
+                            shrink_directions.insert(i+1);
+                        } else {
+                            shrink_direction_found = false;
+                        }
+
+                        if(shrink_direction_found){
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (const auto &shrink_direction: shrink_directions) {
+                if(shrink_direction < 0){
+                    shrink_box.box_min(-shrink_direction - 1) += param.world_resolution;
+                } else {
+                    shrink_box.box_max(shrink_direction - 1) -= param.world_resolution;
+                }
+            }
+        } while(not shrink_directions.empty());
+
+        return shrink_box;
+    }
+
+    bool CollisionConstraints::expandSFCIncrementally(const Box &sfc_initial, double margin, Box &sfc_expand) {
+        if (isObstacleInSFC(sfc_initial, margin)) {
             return false;
         }
 
@@ -827,7 +991,7 @@ namespace DynamicPlanning {
 
         int i = -1;
         int axis;
-        sfc = initial_sfc;
+        sfc = sfc_initial;
         while (!axis_cand.empty()) {
             // initialize boxes
             sfc_cand = sfc;
@@ -876,23 +1040,47 @@ namespace DynamicPlanning {
             }
         }
 
-        expanded_sfc = sfc;
+        sfc_expand = sfc;
         return true;
     }
 
-    bool CollisionConstraints::expandSFC(const Box &initial_sfc, const point3d &goal_point, double margin,
-                                         Box &expanded_sfc) {
-        if (isObstacleInSFC(initial_sfc, margin)) {
+    bool CollisionConstraints::expandSFCLInfinity(const Box &sfc_initial, double margin, Box &sfc_expand) {
+        if (isObstacleInSFC(sfc_initial, margin)) {
+            return false;
+        }
+
+        sfc_expand = sfc_initial;
+        Box sfc_prev;
+        while(sfc_expand != sfc_prev){
+            sfc_prev = sfc_expand;
+
+            // Expand surface points until it meats obstacles
+            std::vector<Box> surface_boxes = findSurfaceBoxes(sfc_expand);
+
+            // Unify surface boxes
+            Box union_box = unifySurfaceBoxes(surface_boxes);
+            union_box = union_box.intersection(Box(mission.world_min, mission.world_max));
+
+            // Shrink union box until there is no obstacle in it
+            sfc_expand = shrinkUnionBox(union_box, sfc_expand, surface_boxes);
+        }
+
+        return true;
+    }
+
+    bool CollisionConstraints::expandSFC(const Box &sfc_initial, const point3d &goal_point, double margin,
+                                         Box &sfc_expand) {
+        if (isObstacleInSFC(sfc_initial, margin)) {
             return false;
         }
 
         Box sfc, sfc_cand, sfc_update;
-        std::vector<int> axis_cand = setAxisCand(initial_sfc, goal_point);  // -x, -y, -z, +x, +y, +z
+        std::vector<int> axis_cand = setAxisCand(sfc_initial, goal_point);  // -x, -y, -z, +x, +y, +z
         // {0, 1, 2, 3, 4, 5};
 
         int i = -1;
         int axis;
-        sfc = initial_sfc;
+        sfc = sfc_initial;
         while (!axis_cand.empty()) {
             // initialize boxes
             sfc_cand = sfc;
@@ -941,7 +1129,7 @@ namespace DynamicPlanning {
             }
         }
 
-        expanded_sfc = sfc;
+        sfc_expand = sfc;
         return true;
     }
 

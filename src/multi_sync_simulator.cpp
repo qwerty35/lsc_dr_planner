@@ -208,7 +208,7 @@ namespace DynamicPlanning {
                                                             agents[0]->getDistmap(),
                                                             mission.agents[0].radius); //TODO: hetero radius
                 if (success) {
-                    std::vector<point3d> desired_waypoints;
+                    points_t desired_waypoints;
                     desired_waypoints.resize(group_size);
                     for (size_t qgi = 0; qgi < group_size; qgi++) {
                         points_t path = grid_based_planner->getPath(qgi);

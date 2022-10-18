@@ -740,10 +740,14 @@ namespace DynamicPlanning {
             initialize_sfc = false;
         } else {
             if(param.goal_mode == GoalMode::GRIDBASEDPLANNER) {
-                std::vector<point3d> convex_hull;
-                convex_hull.emplace_back(initial_traj.lastPoint());
-                convex_hull.emplace_back(agent.current_goal_point);
-                constraints.constructSFCFromConvexHull(convex_hull, agent.next_waypoint, agent.radius);
+//                points_t convex_hull;
+//                convex_hull.emplace_back(initial_traj.lastPoint());
+//                convex_hull.emplace_back(agent.current_goal_point);
+//                constraints.constructSFCFromConvexHull(convex_hull, agent.next_waypoint, agent.radius);
+                constraints.constructSFCFromInitialTraj(initial_traj,
+                                                        agent.current_goal_point,
+                                                        agent.next_waypoint,
+                                                        agent.radius);
                 constraints.constructCommunicationRange(agent.next_waypoint);
             } else {
                 constraints.constructSFCFromPoint(initial_traj.lastPoint(), agent.current_goal_point, agent.radius);

@@ -89,7 +89,11 @@ namespace DynamicPlanning {
 
         [[nodiscard]] lines_t getEdges() const;
 
+        [[nodiscard]] points_t getSurfacePoints(double resolution) const;
+
         bool operator==(Box &other_sfc) const;
+
+        bool operator!=(Box &other_sfc) const;
     };
 
     typedef std::vector<std::vector<std::vector<LSC>>> RSFCs; // [obs_idx][segment_idx][control_point_idx]
@@ -108,6 +112,11 @@ namespace DynamicPlanning {
         void constructSFCFromConvexHull(const points_t &convex_hull,
                                         const point3d &next_waypoint,
                                         double agent_radius);
+
+        void constructSFCFromInitialTraj(const traj_t &initial_traj,
+                                         const point3d &current_goal_point,
+                                         const point3d &next_waypoint,
+                                         double agent_radius);
 
         void constructCommunicationRange(const point3d &next_waypoint);
 
@@ -176,20 +185,28 @@ namespace DynamicPlanning {
         std::set<int> dynamic_obstacle_indices; // Set of indices of dynamic obstacles
 
         bool expandSFCFromPoint(const point3d &point, const point3d &goal_point,
-                                const Box &prev_sfc, double agent_radius, Box &expanded_sfc);
+                                const Box &sfc_prev, double agent_radius, Box &sfc_expand);
 
-        bool expandSFCFromConvexHull(const points_t &convex_hull, double agent_radius, Box &expanded_sfc);
+        bool expandSFCFromConvexHull(const points_t &convex_hull, double agent_radius, Box &sfc_expand);
 
-        bool expandSFCFromConvexHull(const points_t &convex_hull, const Box &prev_sfc,
-                                     double agent_radius, Box &expanded_sfc);
+        bool expandSFCFromConvexHull(const points_t &convex_hull, const Box &sfc_prev,
+                                     double agent_radius, Box &sfc_expand);
 
-        bool isObstacleInSFC(const Box &initial_sfc, double margin);
+        bool isObstacleInSFC(const Box &sfc_initial, double margin);
 
         bool isSFCInBoundary(const Box &sfc, double margin);
 
-        bool expandSFC(const Box &initial_sfc, double margin, Box &expanded_sfc);
+        std::vector<Box> findSurfaceBoxes(const Box &sfc);
 
-        bool expandSFC(const Box &initial_sfc, const point3d &goal_point, double margin, Box &expanded_sfc);
+        Box unifySurfaceBoxes(const std::vector<Box> &surface_boxes);
+
+        Box shrinkUnionBox(const Box& union_box, const Box &sfc_initial, const std::vector<Box> &surface_boxes);
+
+        bool expandSFCIncrementally(const Box &sfc_initial, double margin, Box &sfc_expand);
+
+        bool expandSFCLInfinity(const Box &sfc_initial, double margin, Box &sfc_expand);
+
+        bool expandSFC(const Box &sfc_initial, const point3d &goal_point, double margin, Box &sfc_expand);
 
         [[nodiscard]] points_t findFeasibleVertices(int m, int control_point_idx) const;
 
